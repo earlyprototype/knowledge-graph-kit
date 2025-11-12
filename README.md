@@ -1,6 +1,6 @@
 # Knowledge Graph Kit
 
-Build, visualize, and explore knowledge graphs with an interactive web interface. Perfect for research synthesis, system architecture mapping, or stakeholder analysis.
+Build, visualize, and explore knowledge graphs with an interactive web interface. Perfect for research synthesis, systems mapping, or stakeholder analysis.
 
 <div align="center">
 
@@ -21,7 +21,7 @@ Build, visualize, and explore knowledge graphs with an interactive web interface
 
 ## Features
 
-- **🎯 4 Pre-built Templates** - Research, Systems Architecture, Ecosystem Mapping, Generic
+- **🎯 4 Pre-built Templates** - Research, Systems Mapping, Ecosystem Mapping, Generic
 - **🎨 Interactive Visualization** - Click, explore, and navigate your knowledge graph
 - **🤖 AI Integration** - Optional Gemini chat for insights and exploration
 - **📊 Provenance Tracking** - Track where each concept came from
@@ -80,11 +80,11 @@ Choose the template that fits your use case:
 **Entities:** Concepts, Researchers, Papers  
 **Use Cases:** Literature synthesis, concept mapping, citation networks
 
-### 🏗️ Systems Architecture
-**For:** Software systems, microservices, dependencies
+### 🏗️ Systems Mapping
+**For:** Systems thinking, complex systems analysis, organizational systems
 
 **Entities:** Components, Teams, Specifications  
-**Use Cases:** Service mapping, impact analysis, architecture documentation
+**Use Cases:** Systems thinking, dependency mapping, impact analysis, systems documentation
 
 ### 🌐 Ecosystem Mapping
 **For:** Stakeholder analysis, value flows, organizational networks
@@ -233,10 +233,10 @@ pip install -r requirements.txt
 - Identify research gaps
 - Generate literature reviews
 
-### Software Architecture
-- Map service dependencies
-- Document system architecture
-- Plan migrations and refactoring
+### Systems Mapping & Thinking
+- Map system dependencies and relationships
+- Understand complex systems and feedback loops
+- Analyze system dynamics and interactions
 - Track ownership and specifications
 
 ### Ecosystem Analysis

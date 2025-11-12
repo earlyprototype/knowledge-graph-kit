@@ -1,5 +1,5 @@
-# Systems Architecture Mapping Configuration
-# For mapping software systems, services, components, and dependencies
+# Systems Mapping Configuration
+# For systems thinking, mapping complex systems, their components, relationships, and dependencies
 
 domain: systems
 version: "1.0"
@@ -52,7 +52,7 @@ entity_types:
       - name: source_documents
         type: array
         required: false
-        comment: "Architecture docs, ADRs"
+        comment: "System documentation, specifications"
       - name: related_to
         type: array
         required: false
@@ -108,12 +108,12 @@ entity_types:
         type: enum
         required: false
         values:
-          - architecture-document
-          - adr
-          - api-spec
+          - system-document
+          - design-doc
+          - specification
           - technical-spec
-          - runbook
           - diagram
+          - adr
       - name: key_components
         type: array
         required: false
@@ -149,7 +149,7 @@ relationships:
 paths:
   data_dir: "./data"
   entities_file: "entities.json"
-  document_dir: "./architecture_docs"
+  document_dir: "./system_docs"
   output_dir: "./output"
 
 # Visualization settings
@@ -183,14 +183,14 @@ visualization:
 gemini_context:
   enabled: false
   system_prompt: |
-    You are a systems architecture assistant with access to a component dependency graph.
-    The graph contains software components, teams, and specifications with their relationships.
+    You are a systems thinking assistant with access to a complex systems map.
+    The graph contains system components, teams, and specifications with their relationships.
     You help with:
-    - Understanding system dependencies
-    - Identifying architectural risks
-    - Planning refactoring and migrations
+    - Understanding system dynamics and relationships
+    - Identifying feedback loops and emergent behaviors
+    - Analyzing system dependencies and impacts
     - Finding ownership and documentation gaps
-    - Analyzing impact of changes
+    - Supporting systems thinking analysis
   
   document_context_template: |
     Current component: {component_name}

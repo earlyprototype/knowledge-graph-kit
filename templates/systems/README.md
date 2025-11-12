@@ -1,22 +1,22 @@
-# Systems Architecture Template
+# Systems Mapping Template
 
-Knowledge graph optimized for mapping software systems, microservices, components, and their dependencies.
+Knowledge graph optimized for systems thinking, mapping complex systems, their components, relationships, and dependencies. Suitable for software systems, organizational systems, or any complex system analysis.
 
 ## Entities
 
 ### Components (Primary)
-Services, modules, subsystems, APIs, data stores, and external integrations.
+System components, services, modules, subsystems, interfaces, and their connections.
 
 **Types:**
-- service (microservices, applications)
-- module (internal modules, libraries)
+- service (services, applications, functions)
+- module (internal modules, sub-components)
 - subsystem (major system components)
-- interface (APIs, interfaces)
-- data-store (databases, caches, queues)
-- external-system (third-party services)
-- api (REST, GraphQL, etc.)
-- library (shared libraries)
-- tool (dev tools, infrastructure)
+- interface (APIs, interfaces, connection points)
+- data-store (data repositories, information flows)
+- external-system (external dependencies)
+- api (interfaces and protocols)
+- library (shared resources)
+- tool (supporting systems, infrastructure)
 
 **Fields:**
 - `id`: Unique identifier (lowercase-hyphenated)
@@ -26,12 +26,12 @@ Services, modules, subsystems, APIs, data stores, and external integrations.
 - `version`: Current version
 - `status`: active | deprecated | planned | archived
 - `tech_stack`: Technologies used (e.g., ["Node.js", "PostgreSQL"])
-- `source_documents`: Architecture docs, ADRs
+- `source_documents`: System documentation, specifications
 - `related_to`: Related component IDs
 - `components`: Sub-component IDs
 
 ### Teams (Contributors)
-Development teams, platform teams, infrastructure teams.
+Teams, departments, working groups, or responsible parties.
 
 **Fields:**
 - `id`: Unique identifier
@@ -42,14 +42,14 @@ Development teams, platform teams, infrastructure teams.
 - `contact`: Contact info (email, Slack, etc.)
 
 ### Specifications (Sources)
-Architecture documents, ADRs, API specs, runbooks, diagrams.
+System documentation, specifications, design documents, diagrams.
 
 **Fields:**
 - `id`: Unique identifier
 - `title`: Document title
 - `authors`: Document authors
 - `last_updated`: Date
-- `type`: architecture-document | adr | api-spec | technical-spec | runbook | diagram
+- `type`: system-document | design-doc | specification | technical-spec | diagram | adr
 - `key_components`: Components documented
 - `references`: Other spec IDs
 - `status`: current | outdated | draft
@@ -72,20 +72,23 @@ Architecture documents, ADRs, API specs, runbooks, diagrams.
 
 ## Use Cases
 
-### 1. Dependency Mapping
-Map all service dependencies to understand system architecture.
+### 1. Systems Thinking Analysis
+Map complex systems to understand relationships, feedback loops, and emergent behaviors.
 
-### 2. Impact Analysis
-When changing a component, see what else is affected.
+### 2. Dependency Mapping
+Map all component dependencies to understand system structure.
 
-### 3. Ownership Tracking
-Know which team owns each component.
+### 3. Impact Analysis
+When changing a component, see what else is affected through the system.
 
-### 4. Migration Planning
-Plan migrations by understanding dependency chains.
+### 4. Ownership Tracking
+Know which team or party is responsible for each component.
 
-### 5. Documentation Gaps
-Find components without architecture docs.
+### 5. System Evolution Planning
+Plan changes by understanding dependency chains and system dynamics.
+
+### 6. Documentation Gaps
+Find components without proper documentation.
 
 ## Example Usage
 
@@ -103,7 +106,7 @@ gm.add_entity('primary', {
     'version': 'v2.3.1',
     'status': 'active',
     'tech_stack': ['Node.js', 'Express', 'Redis', 'PostgreSQL'],
-    'source_documents': ['arch-doc-auth', 'adr-005']
+    'source_documents': ['system-doc-auth', 'spec-005']
 })
 
 # Add database
@@ -127,13 +130,13 @@ gm.add_entity('contributors', {
     'contact': 'platform-team@company.com'
 })
 
-# Add architecture doc
+# Add system documentation
 gm.add_entity('sources', {
-    'id': 'arch-doc-auth',
-    'title': 'Authentication Service Architecture',
+    'id': 'system-doc-auth',
+    'title': 'Authentication Service System Design',
     'authors': ['Jane Smith', 'Platform Team'],
     'last_updated': '2024-11-01',
-    'type': 'architecture-document',
+    'type': 'system-document',
     'key_components': ['auth-service', 'user-db'],
     'status': 'current'
 })
@@ -144,7 +147,7 @@ gm.add_relationship('auth-service', 'user-db', 'consumes-data-from',
 
 gm.add_relationship('auth-service', 'platform-team', 'owned-by')
 
-gm.add_relationship('auth-service', 'arch-doc-auth', 'documented-in')
+gm.add_relationship('auth-service', 'system-doc-auth', 'documented-in')
 
 gm.save()
 ```
@@ -180,23 +183,23 @@ Follow "consumes-data-from" and "produces-data-for" relationships
 
 - Use consistent naming: `service-name` not `ServiceName`
 - Track versions for easier migration planning
-- Link components to architecture docs
+- Link components to system documentation
 - Update `status` field when deprecating
 - Use `tech_stack` to track technology dependencies
 - Document ownership for all critical components
 
-## Integration with Architecture Decision Records (ADRs)
+## Integration with Design Documents & Decision Records
 
-Add ADRs as specifications:
+Add design documents or ADRs as specifications:
 ```python
 gm.add_entity('sources', {
-    'id': 'adr-005',
-    'title': 'ADR-005: Adopt Redis for Session Storage',
-    'type': 'adr',
+    'id': 'spec-005',
+    'title': 'Design Decision: Session Storage Approach',
+    'type': 'design-doc',
     'key_components': ['auth-service'],
     'status': 'current'
 })
 
-gm.add_relationship('auth-service', 'adr-005', 'implements')
+gm.add_relationship('auth-service', 'spec-005', 'implements')
 ```
 

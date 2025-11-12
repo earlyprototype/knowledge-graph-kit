@@ -4,6 +4,12 @@ Build, visualize, and explore knowledge graphs with an interactive web interface
 
 <div align="center">
 
+![Knowledge Graph Kit](img/top.png)
+
+</div>
+
+<div align="center">
+
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 

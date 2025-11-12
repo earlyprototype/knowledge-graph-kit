@@ -1,0 +1,205 @@
+# Systems Mapping Configuration
+# For systems thinking, mapping complex systems, their components, relationships, and dependencies
+
+domain: systems
+version: "1.0"
+
+# Entity type definitions
+entity_types:
+  primary:
+    name: components
+    label_singular: Component
+    label_plural: Components
+    icon: "⬡"
+    types:
+      - service
+      - module
+      - subsystem
+      - interface
+      - data-store
+      - external-system
+      - api
+      - library
+      - tool
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: label
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: version
+        type: string
+        required: false
+      - name: status
+        type: enum
+        required: false
+        values:
+          - active
+          - deprecated
+          - planned
+          - archived
+      - name: tech_stack
+        type: array
+        required: false
+        comment: "Technologies used (e.g., Node.js, PostgreSQL)"
+      - name: source_documents
+        type: array
+        required: false
+        comment: "System documentation, specifications"
+      - name: related_to
+        type: array
+        required: false
+      - name: components
+        type: array
+        required: false
+        comment: "Sub-components"
+  
+  contributors:
+    name: teams
+    label_singular: Team
+    label_plural: Teams
+    icon: "👥"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: department
+        type: string
+        required: false
+      - name: responsibilities
+        type: array
+        required: false
+      - name: owned_components
+        type: array
+        required: false
+      - name: contact
+        type: string
+        required: false
+  
+  sources:
+    name: specifications
+    label_singular: Specification
+    label_plural: Specifications
+    icon: "📄"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: title
+        type: string
+        required: true
+      - name: authors
+        type: array
+        required: false
+      - name: last_updated
+        type: string
+        required: false
+      - name: type
+        type: enum
+        required: false
+        values:
+          - system-document
+          - design-doc
+          - specification
+          - technical-spec
+          - diagram
+          - adr
+      - name: key_components
+        type: array
+        required: false
+      - name: references
+        type: array
+        required: false
+      - name: status
+        type: enum
+        required: false
+        values:
+          - current
+          - outdated
+          - draft
+
+# Relationship type definitions
+relationships:
+  types:
+    - depends-on
+    - integrates-with
+    - calls
+    - consumes-data-from
+    - produces-data-for
+    - deployed-on
+    - monitored-by
+    - owned-by
+    - extends
+    - implements
+    - replaces
+    - communicates-with
+    - authenticated-by
+
+# File paths
+paths:
+  data_dir: "./data"
+  entities_file: "entities.json"
+  document_dir: "./system_docs"
+  output_dir: "./output"
+
+# Visualization settings
+visualization:
+  colors:
+    service: "#3498db"
+    module: "#9b59b6"
+    subsystem: "#2ecc71"
+    interface: "#f39c12"
+    data-store: "#e74c3c"
+    external-system: "#95a5a6"
+    api: "#1abc9c"
+    library: "#34495e"
+    tool: "#e67e22"
+    default: "#7f8c8d"
+  
+  node_sizes:
+    component: 20
+    team: 15
+    specification: 18
+  
+  physics:
+    enabled: false
+    gravitationalConstant: -4000
+    centralGravity: 0.3
+    springLength: 150
+    springConstant: 0.04
+    damping: 0.09
+
+# AI context configuration (optional)
+gemini_context:
+  enabled: false
+  system_prompt: |
+    You are a systems thinking assistant with access to a complex systems map.
+    The graph contains system components, teams, and specifications with their relationships.
+    You help with:
+    - Understanding system dynamics and relationships
+    - Identifying feedback loops and emergent behaviors
+    - Analyzing system dependencies and impacts
+    - Finding ownership and documentation gaps
+    - Supporting systems thinking analysis
+  
+  document_context_template: |
+    Current component: {component_name}
+    Type: {component_type}
+    Status: {status}
+    Tech stack: {tech_stack}
+    Owned by: {team}
+    Dependencies: {dependencies}
+    Dependents: {dependents}
+    
+    This component is part of a system with {total_components} components and {total_teams} teams.
+

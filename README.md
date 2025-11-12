@@ -104,6 +104,8 @@ Choose the template that fits your use case:
 
 ## Example Usage
 
+### Quick Start Code
+
 ```python
 from core.graph_manager import GraphManager
 
@@ -125,6 +127,20 @@ gm.add_relationship('design-thinking', 'human-centered-design', 'relates-to')
 # Save
 gm.save()
 ```
+
+### 📊 Complete Working Example
+
+See a **real systems map** of the Knowledge Graph Kit codebase itself:
+
+```bash
+cd examples/systems-map-example
+python build_map.py
+python server.py
+```
+
+**Includes:** 20 components, 39 relationships, full documentation
+
+[View example documentation →](examples/systems-map-example/EXAMPLE_README.md)
 
 ---
 

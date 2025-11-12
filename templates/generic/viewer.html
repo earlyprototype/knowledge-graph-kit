@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; height: 100vh; overflow: hidden; }
+        #header { background: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #header h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+        #controls { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        #search { padding: 8px 12px; border: none; border-radius: 4px; font-size: 14px; width: 300px; }
+        .filter-btn { padding: 6px 12px; background: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .filter-btn:hover { background: #ecf0f1; }
+        .filter-btn.active { background: #3498db; color: white; }
+        #stats { color: #ecf0f1; font-size: 12px; margin-left: auto; }
+        #mynetwork { width: 100%; height: calc(100vh - 100px); background: white; }
+        #info-panel { position: absolute; top: 120px; right: 20px; width: 350px; max-height: calc(100vh - 140px); background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 20px; overflow-y: auto; display: none; }
+        #info-panel.visible { display: block; }
+        #info-panel h2 { font-size: 18px; margin-bottom: 12px; color: #2c3e50; }
+        .field { margin-bottom: 12px; }
+        .field-label { font-weight: 600; color: #7f8c8d; font-size: 12px; text-transform: uppercase; margin-bottom: 4px; }
+        .field-value { color: #2c3e50; font-size: 14px; line-height: 1.5; }
+        .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #95a5a6; }
+        .close-btn:hover { color: #2c3e50; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Knowledge Graph</h1>
+        <div id="controls">
+            <input type="text" id="search" placeholder="Search...">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <div id="stats"></div>
+        </div>
+    </div>
+    
+    <div id="loading">
+        <h2>Loading Knowledge Graph...</h2>
+        <p>Please wait...</p>
+    </div>
+    
+    <div id="mynetwork"></div>
+    
+    <div id="info-panel">
+        <button class="close-btn" onclick="closeInfoPanel()">×</button>
+        <div id="info-content"></div>
+    </div>
+
+    <script>
+        // Same basic structure as research template
+        // Customize colors and entity handling based on config
+        fetch('data/entities.json')
+            .then(response => response.json())
+            .then(data => initGraph(data))
+            .catch(error => {
+                document.getElementById('loading').innerHTML = '<h2>Error Loading Graph</h2><p>Make sure server is running: python server.py</p>';
+                console.error('Error:', error);
+            });
+
+        function initGraph(entitiesData) {
+            document.getElementById('loading').style.display = 'none';
+            
+            const nodes = [];
+            const edges = [];
+            
+            // Dynamically create nodes from any entity type
+            Object.keys(entitiesData).forEach(key => {
+                if (Array.isArray(entitiesData[key]) && key !== 'relationships') {
+                    entitiesData[key].forEach(entity => {
+                        nodes.push({
+                            id: entity.id,
+                            label: entity.label || entity.name || entity.title,
+                            title: entity.description || '',
+                            color: '#3498db',
+                            shape: 'dot',
+                            size: 20,
+                            data: entity
+                        });
+                    });
+                }
+            });
+            
+            // Relationships
+            (entitiesData.relationships || []).forEach(rel => {
+                edges.push({
+                    from: rel.from,
+                    to: rel.to,
+                    label: rel.type,
+                    arrows: 'to'
+                });
+            });
+            
+            const container = document.getElementById('mynetwork');
+            const data = { 
+                nodes: new vis.DataSet(nodes), 
+                edges: new vis.DataSet(edges) 
+            };
+            
+            const network = new vis.Network(container, data, {
+                nodes: { borderWidth: 2, shadow: true },
+                edges: { arrows: 'to' },
+                physics: { enabled: false }
+            });
+            
+            document.getElementById('stats').innerHTML = `${nodes.length} nodes | ${edges.length} edges`;
+            
+            network.on("click", params => {
+                if (params.nodes.length > 0) {
+                    const node = data.nodes.get(params.nodes[0]);
+                    showInfoPanel(node);
+                }
+            });
+        }
+
+        function showInfoPanel(node) {
+            const panel = document.getElementById('info-panel');
+            const content = document.getElementById('info-content');
+            let html = `<h2>${node.label}</h2>`;
+            
+            Object.keys(node.data).forEach(key => {
+                if (key !== 'id' && !Array.isArray(node.data[key])) {
+                    html += `<div class="field"><div class="field-label">${key}</div><div class="field-value">${node.data[key]}</div></div>`;
+                }
+            });
+            
+            content.innerHTML = html;
+            panel.classList.add('visible');
+        }
+
+        function closeInfoPanel() {
+            document.getElementById('info-panel').classList.remove('visible');
+        }
+    </script>
+</body>
+</html>
+

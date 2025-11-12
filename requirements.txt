@@ -1,0 +1,13 @@
+# Knowledge Graph Kit - Python Dependencies
+
+# Core functionality
+pyyaml>=6.0
+
+# Gemini AI chat integration (built-in feature, needs API key)
+google-generativeai>=0.3.0
+
+# That's it! Everything else uses Python stdlib:
+# - http.server (for web server)
+# - json (for data storage)  
+# - pathlib (for file handling)
+# - datetime (for timestamps)

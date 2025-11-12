@@ -1,0 +1,232 @@
+# Ecosystem Mapping Configuration
+# For mapping stakeholders, organizations, resources, and value flows
+
+domain: ecosystem
+version: "1.0"
+
+# Entity type definitions
+entity_types:
+  primary:
+    name: elements
+    label_singular: Element
+    label_plural: Elements
+    icon: "◉"
+    types:
+      - organization
+      - platform
+      - resource
+      - process
+      - capability
+      - value-stream
+      - market
+      - technology
+      - policy
+      - infrastructure
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: label
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: sector
+        type: string
+        required: false
+        comment: "Industry sector or domain"
+      - name: maturity
+        type: enum
+        required: false
+        values:
+          - emerging
+          - developing
+          - mature
+          - declining
+      - name: scale
+        type: enum
+        required: false
+        values:
+          - local
+          - regional
+          - national
+          - global
+      - name: source_insights
+        type: array
+        required: false
+        comment: "Reports, interviews that mention this"
+      - name: related_to
+        type: array
+        required: false
+      - name: components
+        type: array
+        required: false
+  
+  contributors:
+    name: stakeholders
+    label_singular: Stakeholder
+    label_plural: Stakeholders
+    icon: "👤"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: false
+        values:
+          - individual
+          - organization
+          - institution
+          - community
+          - government
+      - name: role
+        type: string
+        required: false
+      - name: influence_level
+        type: enum
+        required: false
+        values:
+          - high
+          - medium
+          - low
+      - name: interests
+        type: array
+        required: false
+        comment: "Key interests and motivations"
+      - name: key_elements
+        type: array
+        required: false
+        comment: "Elements they're involved with"
+      - name: mentioned_in
+        type: array
+        required: false
+  
+  sources:
+    name: insights
+    label_singular: Insight
+    label_plural: Insights
+    icon: "💡"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: title
+        type: string
+        required: true
+      - name: source_type
+        type: enum
+        required: false
+        values:
+          - interview
+          - report
+          - survey
+          - observation
+          - workshop
+          - secondary-research
+      - name: date
+        type: string
+        required: false
+      - name: authors
+        type: array
+        required: false
+      - name: key_elements
+        type: array
+        required: false
+      - name: key_findings
+        type: array
+        required: false
+      - name: references
+        type: array
+        required: false
+      - name: status
+        type: enum
+        required: false
+        values:
+          - validated
+          - preliminary
+          - needs-verification
+
+# Relationship type definitions
+relationships:
+  types:
+    - provides-to
+    - receives-from
+    - influences
+    - depends-on
+    - competes-with
+    - partners-with
+    - funds
+    - regulates
+    - enables
+    - constrains
+    - collaborates-with
+    - supplies
+    - consumes
+
+# File paths
+paths:
+  data_dir: "./data"
+  entities_file: "entities.json"
+  document_dir: "./insights"
+  output_dir: "./output"
+
+# Visualization settings
+visualization:
+  colors:
+    organization: "#3498db"
+    platform: "#9b59b6"
+    resource: "#2ecc71"
+    process: "#f39c12"
+    capability: "#1abc9c"
+    value-stream: "#e74c3c"
+    market: "#34495e"
+    technology: "#e67e22"
+    policy: "#c0392b"
+    infrastructure: "#16a085"
+    default: "#7f8c8d"
+  
+  node_sizes:
+    element: 20
+    stakeholder: 15
+    insight: 18
+  
+  physics:
+    enabled: false
+    gravitationalConstant: -4000
+    centralGravity: 0.3
+    springLength: 150
+    springConstant: 0.04
+    damping: 0.09
+
+# AI context configuration (optional)
+gemini_context:
+  enabled: false
+  system_prompt: |
+    You are an ecosystem analysis assistant with access to a stakeholder and resource graph.
+    The graph contains ecosystem elements, stakeholders, and insights with their relationships.
+    You help with:
+    - Understanding ecosystem dynamics
+    - Identifying key stakeholders and power structures
+    - Mapping value flows and dependencies
+    - Finding collaboration opportunities
+    - Analyzing ecosystem health and gaps
+  
+  document_context_template: |
+    Current element: {element_name}
+    Type: {element_type}
+    Sector: {sector}
+    Maturity: {maturity}
+    Scale: {scale}
+    Key stakeholders: {stakeholders}
+    Value flows: {value_flows}
+    
+    This element is part of an ecosystem with {total_elements} elements and {total_stakeholders} stakeholders.
+

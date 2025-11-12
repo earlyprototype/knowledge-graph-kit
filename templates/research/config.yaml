@@ -1,0 +1,192 @@
+# Research Knowledge Graph Configuration
+# Based on systematic literature review and paper analysis
+
+domain: research
+version: "1.0"
+
+# Entity type definitions
+entity_types:
+  primary:
+    name: concepts
+    label_singular: Concept
+    label_plural: Concepts
+    icon: "●"
+    types:
+      - methodology
+      - approach
+      - principle
+      - framework
+      - technology
+      - process
+      - theory
+      - skill
+      - role
+      - phenomenon
+      - application
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: label
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: aliases
+        type: array
+        required: false
+      - name: source_papers
+        type: array
+        required: false
+      - name: related_to
+        type: array
+        required: false
+      - name: components
+        type: array
+        required: false
+  
+  contributors:
+    name: researchers
+    label_singular: Researcher
+    label_plural: Researchers
+    icon: "■"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: affiliation
+        type: string
+        required: false
+      - name: contributions
+        type: array
+        required: false
+      - name: key_papers
+        type: array
+        required: false
+      - name: mentioned_in
+        type: array
+        required: false
+  
+  sources:
+    name: papers
+    label_singular: Paper
+    label_plural: Papers
+    icon: "◆"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: title
+        type: string
+        required: true
+      - name: authors
+        type: array
+        required: false
+      - name: year
+        type: integer
+        required: false
+      - name: type
+        type: enum
+        required: false
+        values:
+          - systematic-literature-review
+          - empirical-study
+          - theoretical
+          - methodological
+          - meta-analysis
+          - case-study
+      - name: key_concepts
+        type: array
+        required: false
+      - name: cites
+        type: array
+        required: false
+      - name: status
+        type: enum
+        required: false
+        values:
+          - analyzed
+          - reading
+          - to-read
+
+# Relationship type definitions
+relationships:
+  types:
+    - integrates-with
+    - relates-to
+    - requires
+    - enables
+    - challenges
+    - extends
+    - applies-to
+    - popularized
+    - theorized
+    - builds-on
+    - depends-on
+    - implements
+
+# File paths
+paths:
+  data_dir: "./data"
+  entities_file: "entities.json"
+  document_dir: "./papers"
+  output_dir: "./output"
+
+# Visualization settings
+visualization:
+  colors:
+    methodology: "#3498db"
+    technology: "#e74c3c"
+    framework: "#9b59b6"
+    principle: "#2ecc71"
+    approach: "#f39c12"
+    process: "#1abc9c"
+    theory: "#34495e"
+    skill: "#e67e22"
+    role: "#95a5a6"
+    phenomenon: "#c0392b"
+    application: "#16a085"
+    default: "#7f8c8d"
+  
+  node_sizes:
+    concept: 20
+    researcher: 15
+    paper: 20
+  
+  physics:
+    enabled: false  # Disable on initial load for performance
+    gravitationalConstant: -4000
+    centralGravity: 0.3
+    springLength: 150
+    springConstant: 0.04
+    damping: 0.09
+
+# AI context configuration (optional - for Gemini integration)
+gemini_context:
+  enabled: false
+  system_prompt: |
+    You are a research assistant with access to an academic knowledge graph.
+    The graph contains concepts, researchers, and papers with their relationships.
+    You help with:
+    - Finding connections between concepts
+    - Identifying research gaps
+    - Tracing concept evolution
+    - Suggesting related papers
+    - Synthesizing insights across sources
+  
+  document_context_template: |
+    Current paper: {paper_title}
+    Authors: {authors}
+    Year: {year}
+    Type: {paper_type}
+    Key concepts: {key_concepts}
+    
+    This paper is part of a knowledge graph with {total_papers} papers and {total_concepts} concepts.
+

@@ -1,0 +1,178 @@
+# Generic Knowledge Graph Configuration
+# Customize for any domain: systems, ecosystems, projects, etc.
+
+domain: generic  # Change to: systems, ecosystem, project, etc.
+version: "1.0"
+
+# Entity type definitions - Customize these for your domain
+entity_types:
+  primary:
+    name: elements  # Change to: components, stakeholders, modules, etc.
+    label_singular: Element
+    label_plural: Elements
+    icon: "●"
+    types:  # Define your own types
+      - type-a
+      - type-b
+      - type-c
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: label
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: aliases
+        type: array
+        required: false
+      - name: source_documents
+        type: array
+        required: false
+        comment: "Track provenance"
+      - name: related_to
+        type: array
+        required: false
+  
+  contributors:
+    name: actors  # Change to: teams, owners, stakeholders, etc.
+    label_singular: Actor
+    label_plural: Actors
+    icon: "■"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: role
+        type: string
+        required: false
+      - name: responsibilities
+        type: array
+        required: false
+      - name: key_items
+        type: array
+        required: false
+        comment: "Links to primary entities"
+      - name: mentioned_in
+        type: array
+        required: false
+  
+  sources:
+    name: documents  # Change to: specs, reports, insights, etc.
+    label_singular: Document
+    label_plural: Documents
+    icon: "◆"
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: title
+        type: string
+        required: true
+      - name: authors
+        type: array
+        required: false
+      - name: date
+        type: string
+        required: false
+      - name: type
+        type: enum
+        required: false
+        values:
+          - specification
+          - report
+          - analysis
+          - documentation
+      - name: key_items
+        type: array
+        required: false
+        comment: "Links to primary entities"
+      - name: references
+        type: array
+        required: false
+      - name: status
+        type: enum
+        required: false
+        values:
+          - active
+          - archived
+          - draft
+
+# Relationship type definitions - Customize for your domain
+relationships:
+  types:
+    - connects-to
+    - depends-on
+    - provides-to
+    - receives-from
+    - influences
+    - owns
+    - manages
+    - uses
+
+# File paths
+paths:
+  data_dir: "./data"
+  entities_file: "entities.json"
+  document_dir: "./docs"
+  output_dir: "./output"
+
+# Visualization settings
+visualization:
+  colors:
+    type-a: "#3498db"
+    type-b: "#e74c3c"
+    type-c: "#9b59b6"
+    default: "#7f8c8d"
+  
+  node_sizes:
+    primary: 20
+    contributors: 15
+    sources: 18
+  
+  physics:
+    enabled: false
+    gravitationalConstant: -4000
+    centralGravity: 0.3
+    springLength: 150
+
+# Custom variables (add your own relationship types here)
+custom_variables:
+  relationship_types: []
+    # Example:
+    # - name: mentors
+    #   label: Mentors
+    #   reverse_label: Mentored by
+    #   color: "#4CAF50"
+    #   arrow_style: solid
+    #   strength_default: moderate
+
+  entity_subtypes: []
+    # Example:
+    # - entity_type: primary
+    #   name: custom-type
+    #   label: Custom Type
+    #   icon: "🔧"
+    #   color: "#FF9800"
+
+# AI context configuration (optional)
+gemini_context:
+  enabled: false
+  system_prompt: |
+    You are an assistant with access to a knowledge graph.
+    The graph contains entities, actors, and documents with their relationships.
+    You help with exploration, analysis, and synthesis.
+  
+  document_context_template: |
+    Current context: {item_name}
+    Type: {item_type}
+    Related items: {related_items}
+

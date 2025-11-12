@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph Viewer (Dynamic)</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        #header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        #search {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 300px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #container {
+            display: flex;
+            height: calc(100vh - 100px);
+        }
+        
+        #graph {
+            flex: 1;
+            background: white;
+            position: relative;
+        }
+        
+        #details-panel {
+            width: 350px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        #details-panel.hidden {
+            transform: translateX(100%);
+        }
+        
+        #details-panel h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        #details-panel .field {
+            margin-bottom: 15px;
+        }
+        
+        #details-panel .field-label {
+            font-weight: 600;
+            color: #7f8c8d;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        #details-panel .field-value {
+            color: #2c3e50;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        #details-panel .node-link {
+            color: #3498db;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        #details-panel .node-link:hover {
+            color: #2980b9;
+        }
+        
+        .action-button {
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        #breadcrumb {
+            padding: 10px 20px;
+            background: #ecf0f1;
+            font-size: 13px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        #breadcrumb .breadcrumb-item {
+            color: #3498db;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        #breadcrumb .breadcrumb-item:hover {
+            color: #2980b9;
+        }
+        
+        #breadcrumb .breadcrumb-separator {
+            color: #95a5a6;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+        
+        .loading-overlay.hidden {
+            display: none;
+        }
+        
+        #markdown-panel {
+            position: fixed;
+            top: 0;
+            left: -600px;
+            width: 600px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.2);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #markdown-panel.visible {
+            left: 0;
+        }
+        
+        #markdown-header {
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #markdown-close {
+            background: transparent;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        #markdown-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            line-height: 1.8;
+        }
+        
+        #markdown-content h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        #markdown-content h2 {
+            font-size: 22px;
+            margin: 30px 0 15px;
+            color: #34495e;
+        }
+        
+        #markdown-content h3 {
+            font-size: 18px;
+            margin: 25px 0 12px;
+            color: #34495e;
+        }
+        
+        #markdown-content p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+        
+        #markdown-content code {
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        #markdown-content pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        #markdown-content pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        #markdown-content ul, #markdown-content ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        #markdown-content li {
+            margin-bottom: 8px;
+        }
+        
+        #markdown-content blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 20px;
+            margin: 20px 0;
+            color: #666;
+            font-style: italic;
+        }
+        
+        #markdown-tabs {
+            display: flex;
+            gap: 5px;
+            padding: 0 20px;
+            background: #34495e;
+            overflow-x: auto;
+        }
+        
+        .markdown-tab {
+            padding: 10px 15px;
+            background: transparent;
+            color: #ecf0f1;
+            border: none;
+            cursor: pointer;
+            border-radius: 0;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        
+        .markdown-tab:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .markdown-tab.active {
+            background: white;
+            color: #2c3e50;
+        }
+        
+        /* Chat Panel Styles */
+        #chat-button {
+            background: #27ae60;
+            margin-left: 10px;
+        }
+        
+        #chat-button:hover {
+            background: #229954;
+        }
+        
+        #chat-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 20px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #chat-panel.visible {
+            right: 0;
+        }
+        
+        #chat-header {
+            padding: 20px;
+            background: #27ae60;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #chat-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #chat-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        #chat-close {
+            background: transparent;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        #chat-context-indicator {
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        #chat-context-indicator.visible {
+            display: block;
+        }
+        
+        #chat-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .chat-control-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .chat-control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-message-header {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .chat-message-content {
+            padding: 12px 15px;
+            border-radius: 8px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .chat-message.user .chat-message-content {
+            background: #3498db;
+            color: white;
+            align-self: flex-end;
+            max-width: 85%;
+        }
+        
+        .chat-message.assistant .chat-message-content {
+            background: white;
+            color: #2c3e50;
+            border: 1px solid #e0e0e0;
+            align-self: flex-start;
+            max-width: 90%;
+        }
+        
+        .chat-message.assistant .chat-message-content p {
+            margin: 0 0 10px 0;
+        }
+        
+        .chat-message.assistant .chat-message-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .chat-message.assistant .chat-message-content code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .chat-message.assistant .chat-message-content ul,
+        .chat-message.assistant .chat-message-content ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .chat-message.assistant .chat-message-content li {
+            margin-bottom: 5px;
+        }
+        
+        .chat-loading {
+            display: none;
+            padding: 12px 15px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+            align-self: flex-start;
+            max-width: 90%;
+        }
+        
+        .chat-loading.visible {
+            display: block;
+        }
+        
+        .chat-loading::after {
+            content: '...';
+            animation: chat-loading-dots 1.5s infinite;
+        }
+        
+        @keyframes chat-loading-dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        #chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        #chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #chat-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+        }
+        
+        #chat-input:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+        
+        #chat-send {
+            padding: 10px 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        #chat-send:hover {
+            background: #229954;
+        }
+        
+        #chat-send:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .chat-error {
+            padding: 12px 15px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        Loading knowledge graph...
+    </div>
+    
+    <div id="header">
+        <h1>Research Knowledge Graph <span id="live-badge" class="status-badge">LIVE</span></h1>
+        <div id="controls">
+            <input type="text" id="search" placeholder="Search concepts, papers, researchers...">
+            <button onclick="filterNodes('all')">Show All</button>
+            <button onclick="filterNodes('concept')">Concepts Only</button>
+            <button onclick="filterNodes('paper')">Papers Only</button>
+            <button onclick="filterNodes('researcher')">Researchers Only</button>
+            <button onclick="resetView()">Reset View</button>
+            <button onclick="reloadData()">Refresh Data</button>
+            <button id="chat-button" onclick="toggleChatPanel()">Chat with AI</button>
+        </div>
+    </div>
+    
+    <div id="breadcrumb">
+        <span id="breadcrumb-path">Click a node to start exploring</span>
+    </div>
+    
+    <div id="container">
+        <div id="graph"></div>
+        <div id="details-panel" class="hidden">
+            <h2 id="detail-title">Select a node</h2>
+            <div id="detail-content"></div>
+        </div>
+    </div>
+    
+    <div id="markdown-panel">
+        <div id="markdown-header">
+            <h3 id="markdown-title"></h3>
+            <button id="markdown-close" onclick="closeMarkdownPanel()">&times;</button>
+        </div>
+        <div id="markdown-tabs"></div>
+        <div id="markdown-content"></div>
+    </div>
+    
+    <div id="chat-panel">
+        <div id="chat-header">
+            <div id="chat-header-top">
+                <h3>Research Assistant</h3>
+                <button id="chat-close" onclick="closeChatPanel()">&times;</button>
+            </div>
+            <div id="chat-context-indicator"></div>
+            <div id="chat-controls">
+                <button class="chat-control-btn" onclick="startNewThread()">New Thread</button>
+                <button class="chat-control-btn" onclick="saveCurrentSession()">Save Session</button>
+            </div>
+        </div>
+        <div id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-message-header">Assistant</div>
+                <div class="chat-message-content">
+                    <p>Hello! I'm your research assistant. I have access to your knowledge graph and can help you understand the papers, concepts, and connections in your research.</p>
+                    <p>Ask me anything about the papers you've analysed, or click on a paper and open its summary to discuss it in detail.</p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-loading">Thinking</div>
+        <div id="chat-input-area">
+            <form id="chat-input-form" onsubmit="sendChatMessage(event)">
+                <textarea id="chat-input" placeholder="Ask about papers, concepts, or connections..." rows="1"></textarea>
+                <button id="chat-send" type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Color scheme for different node types (matches Python version)
+        const COLORS = {
+            "methodology": "#3498db",
+            "technology": "#e74c3c",
+            "framework": "#9b59b6",
+            "principle": "#2ecc71",
+            "approach": "#f39c12",
+            "process": "#1abc9c",
+            "theory": "#34495e",
+            "skill": "#e67e22",
+            "role": "#95a5a6",
+            "phenomenon": "#c0392b",
+            "application": "#16a085",
+            "process-model": "#8e44ad",
+            "default": "#7f8c8d"
+        };
+        
+        // Global variables
+        let network = null;
+        let nodesDataSet = null;
+        let edgesDataSet = null;
+        let allNodes = [];
+        let allEdges = [];
+        let entitiesData = null;
+        let paperSummaries = {};
+        let navigationHistory = [];
+        let currentFilter = 'all';
+        
+        // Load entities.json dynamically
+        async function loadEntities() {
+            try {
+                const response = await fetch('entities.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load entities.json: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error loading entities:', error);
+                alert('Failed to load entities.json. Make sure you are running the local server (python start_server.py)');
+                throw error;
+            }
+        }
+        
+        // Check for paper summaries lazily (only when requested)
+        async function checkPaperSummary(paperId) {
+            // Return cached if already checked
+            if (paperSummaries[paperId] !== undefined) {
+                return paperSummaries[paperId];
+            }
+            
+            const docs = [];
+            
+            // Check for paper summary in @Research/papers/
+            const summaryPath = `/@Research/papers/${paperId}.md`;
+            try {
+                const response = await fetch(summaryPath, { method: 'HEAD' });
+                if (response.ok) {
+                    docs.push({
+                        name: "Paper Summary",
+                        path: summaryPath,
+                        order: 0,
+                        icon: "📄"
+                    });
+                }
+            } catch (e) {
+                // File doesn't exist, skip
+            }
+            
+            // Check for spec documents in .lia/paper/
+            const specDocs = [
+                ["0-source-document.md", "Source Document", 1, "📜"],
+                ["0-notepad.md", "Notepad", 2, "📝"],
+                ["1-context.md", "Context", 3, "🎯"],
+                ["2-structure.md", "Structure", 4, "🏗️"],
+                ["3-methodology.md", "Methodology", 5, "🔬"],
+                ["4-evidence.md", "Evidence", 6, "📊"],
+                ["5-contribution.md", "Contribution", 7, "💡"],
+                ["6-synthesis.md", "Synthesis", 8, "🔄"],
+                ["7-citations.md", "Citations", 9, "📚"],
+                ["8-integration.md", "Integration", 10, "🔗"],
+                ["ANALYSIS_SUMMARY.md", "Analysis Summary", 11, "📋"]
+            ];
+            
+            for (const [filename, displayName, order, icon] of specDocs) {
+                const docPath = `/.lia/paper/${paperId}/${filename}`;
+                try {
+                    const response = await fetch(docPath, { method: 'HEAD' });
+                    if (response.ok) {
+                        docs.push({
+                            name: displayName,
+                            path: docPath,
+                            order: order,
+                            icon: icon
+                        });
+                    }
+                } catch (e) {
+                    // File doesn't exist, skip
+                }
+            }
+            
+            if (docs.length > 0) {
+                docs.sort((a, b) => a.order - b.order);
+                paperSummaries[paperId] = docs;
+            } else {
+                paperSummaries[paperId] = null; // Mark as checked but empty
+            }
+            
+            return paperSummaries[paperId];
+        }
+        
+        // Convert entities to nodes
+        function createNodes(entities) {
+            const nodes = [];
+            
+            // Process concepts
+            for (const concept of entities.concepts || []) {
+                const color = COLORS[concept.type] || COLORS.default;
+                const desc = concept.description || "No description";
+                const truncDesc = desc.length > 150 ? desc.substring(0, 147) + "..." : desc;
+                
+                nodes.push({
+                    id: concept.id,
+                    label: concept.label,
+                    title: `<b>${concept.label}</b><br>Type: ${concept.type || 'N/A'}<br><br>${truncDesc}`,
+                    color: color,
+                    group: concept.type || "concept",
+                    shape: "dot",
+                    size: 20,
+                    font: { size: 14 },
+                    nodeType: "concept",
+                    data: concept
+                });
+            }
+            
+            // Process researchers
+            for (const researcher of entities.researchers || []) {
+                nodes.push({
+                    id: researcher.id,
+                    label: researcher.name,
+                    title: `<b>${researcher.name}</b><br>${researcher.affiliation || 'Unknown affiliation'}<br>Contributions: ${(researcher.contributions || []).length}`,
+                    color: "#95a5a6",
+                    group: "researcher",
+                    shape: "box",
+                    size: 15,
+                    font: { size: 12 },
+                    nodeType: "researcher",
+                    data: researcher
+                });
+            }
+            
+            // Process papers
+            for (const paper of entities.papers || []) {
+                let authorsStr = (paper.authors || []).join(", ");
+                if (authorsStr.length > 50) {
+                    authorsStr = authorsStr.substring(0, 47) + "...";
+                }
+                
+                const isAnalyzed = paper.status === "analyzed";
+                
+                const shape = "diamond";
+                const color = isAnalyzed
+                    ? { background: "#f1c40f", border: "#95a5a6", highlight: { background: "#f4d03f", border: "#7f8c8d" } }
+                    : { background: "#f39c12", border: "#d68910", highlight: { background: "#f5b041", border: "#f39c12" } };
+                const size = isAnalyzed ? 20 : 18;
+                
+                const label = (paper.title || "Untitled").substring(0, 30) + "...";
+                
+                nodes.push({
+                    id: paper.id,
+                    label: label,
+                    title: `<b>${paper.title || 'Untitled'}</b><br>Authors: ${authorsStr}<br>Year: ${paper.year || 'N/A'}<br>Type: ${paper.type || 'N/A'}<br>Status: ${(paper.status || 'N/A').toUpperCase()}`,
+                    color: color,
+                    group: "paper",
+                    shape: shape,
+                    size: size,
+                    borderWidth: 2,
+                    font: { size: 12 },
+                    nodeType: "paper",
+                    data: paper
+                });
+            }
+            
+            return nodes;
+        }
+        
+        // Convert relationships to edges
+        function createEdges(entities) {
+            const edges = [];
+            
+            // Process explicit relationships
+            for (const rel of entities.relationships || []) {
+                edges.push({
+                    from: rel.from,
+                    to: rel.to,
+                    label: rel.type || "related",
+                    title: rel.description || "",
+                    arrows: "to",
+                    color: { color: "#848484", opacity: 0.5 },
+                    width: rel.strength === "strong" ? 2 : 1,
+                    dashes: rel.strength === "weak",
+                    smooth: { type: "curvedCW", roundness: 0.2 }
+                });
+            }
+            
+            // Add implicit relationships from related_to fields
+            for (const concept of entities.concepts || []) {
+                for (const relatedId of concept.related_to || []) {
+                    // Check if already exists
+                    const existing = edges.some(e => e.from === concept.id && e.to === relatedId);
+                    if (!existing) {
+                        edges.push({
+                            from: concept.id,
+                            to: relatedId,
+                            label: "related",
+                            arrows: "to",
+                            color: { color: "#cccccc", opacity: 0.3 },
+                            width: 1,
+                            dashes: true,
+                            smooth: { type: "curvedCW", roundness: 0.2 }
+                        });
+                    }
+                }
+            }
+            
+            return edges;
+        }
+        
+        // Initialize the network
+        function initNetwork() {
+            performance.mark('network-init-start');
+            
+            const container = document.getElementById('graph');
+            const data = {
+                nodes: nodesDataSet,
+                edges: edgesDataSet
+            };
+            
+            const options = {
+                physics: {
+                    enabled: false,  // DISABLED for initial load - enabled after render
+                    stabilization: {
+                        enabled: true,
+                        iterations: 50,  // Reduced for faster stabilization
+                        updateInterval: 10  // More frequent UI updates
+                    },
+                    barnesHut: {
+                        gravitationalConstant: -30000,
+                        centralGravity: 0.3,
+                        springLength: 150,
+                        springConstant: 0.04,
+                        damping: 0.09,
+                        avoidOverlap: 0.5
+                    }
+                },
+                layout: {
+                    randomSeed: 42,  // Consistent layout
+                    improvedLayout: true
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    borderWidth: 2,
+                    shadow: true
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous'
+                    },
+                    font: {
+                        size: 10,
+                        face: 'italic arial',
+                        color: '#666666',
+                        strokeWidth: 0
+                    }
+                }
+            };
+            
+            network = new vis.Network(container, data, options);
+            
+            // Event listeners
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    showNodeDetails(params.nodes[0]);
+                }
+            });
+            
+            network.on("doubleClick", function(params) {
+                if (params.nodes.length > 0) {
+                    focusOnNode(params.nodes[0]);
+                }
+            });
+            
+            network.on("oncontext", function(params) {
+                params.event.preventDefault();
+                resetView();
+            });
+            
+            // Progress tracking for stabilization
+            network.on("stabilizationProgress", function(params) {
+                const progress = Math.round((params.iterations / params.total) * 100);
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) {
+                    loadingEl.innerHTML = `<div style="text-align: center;">
+                        <div style="font-size: 20px; margin-bottom: 10px;">Loading knowledge graph...</div>
+                        <div style="font-size: 16px; color: #666;">${progress}%</div>
+                        <div style="width: 200px; height: 4px; background: #ddd; margin: 15px auto; border-radius: 2px; overflow: hidden;">
+                            <div style="width: ${progress}%; height: 100%; background: #27ae60; transition: width 0.3s;"></div>
+                        </div>
+                    </div>`;
+                }
+            });
+            
+            // Hide loading overlay when stabilization is done
+            network.once("stabilizationIterationsDone", function() {
+                console.log("Network stabilization complete");
+                performance.mark('network-stabilized');
+                performance.measure('stabilization', 'network-init-start', 'network-stabilized');
+                const timing = performance.getEntriesByName('stabilization')[0];
+                console.log(`Stabilization took: ${timing.duration.toFixed(0)}ms`);
+                
+                document.getElementById('loading').classList.add('hidden');
+            });
+            
+            // Log network initialization complete
+            performance.mark('network-init-end');
+            performance.measure('network-init', 'network-init-start', 'network-init-end');
+            const initTiming = performance.getEntriesByName('network-init')[0];
+            console.log(`Network initialization took: ${initTiming.duration.toFixed(0)}ms`);
+            
+            // Enable physics after initial render (non-blocking)
+            setTimeout(function() {
+                console.log("Enabling physics simulation...");
+                network.setOptions({
+                    physics: {
+                        enabled: true
+                    }
+                });
+                
+                // Run quick stabilization
+                network.stabilize(50);
+            }, 100);
+            
+            // Fallback: hide loading after 10 seconds if something went wrong
+            setTimeout(function() {
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl && !loadingEl.classList.contains('hidden')) {
+                    console.warn("Timeout: Forcing loading screen to hide");
+                    loadingEl.classList.add('hidden');
+                }
+            }, 10000);
+        }
+        
+        // Show node details in panel
+        async function showNodeDetails(nodeId) {
+            const node = nodesDataSet.get(nodeId);
+            if (!node) return;
+            
+            const panel = document.getElementById('details-panel');
+            const title = document.getElementById('detail-title');
+            const content = document.getElementById('detail-content');
+            
+            panel.classList.remove('hidden');
+            title.textContent = node.label;
+            
+            let html = '';
+            
+            if (node.nodeType === 'concept') {
+                html += `<div class="field">
+                    <div class="field-label">Type</div>
+                    <div class="field-value">${node.data.type || 'N/A'}</div>
+                </div>`;
+                
+                html += `<div class="field">
+                    <div class="field-label">Description</div>
+                    <div class="field-value">${node.data.description || 'No description'}</div>
+                </div>`;
+                
+                if (node.data.source_papers && node.data.source_papers.length > 0) {
+                    html += `<div class="field">
+                        <div class="field-label">Source Papers</div>
+                        <div class="field-value">`;
+                    for (const paperId of node.data.source_papers) {
+                        const paperNode = nodesDataSet.get(paperId);
+                        if (paperNode) {
+                            html += `<span class="node-link" onclick="navigateToNode('${paperId}')">${paperNode.data.title || paperNode.label}</span><br>`;
+                        }
+                    }
+                    html += `</div></div>`;
+                }
+                
+                if (node.data.related_to && node.data.related_to.length > 0) {
+                    html += `<div class="field">
+                        <div class="field-label">Related Concepts</div>
+                        <div class="field-value">`;
+                    for (const relId of node.data.related_to) {
+                        const relNode = nodesDataSet.get(relId);
+                        if (relNode) {
+                            html += `<span class="node-link" onclick="navigateToNode('${relId}')">${relNode.label}</span><br>`;
+                        }
+                    }
+                    html += `</div></div>`;
+                }
+                
+                html += `<button class="action-button" onclick="focusOnNode('${nodeId}')">Show Connections</button>`;
+                
+            } else if (node.nodeType === 'paper') {
+                html += `<div class="field">
+                    <div class="field-label">Title</div>
+                    <div class="field-value">${node.data.title || 'Untitled'}</div>
+                </div>`;
+                
+                html += `<div class="field">
+                    <div class="field-label">Authors</div>
+                    <div class="field-value">${(node.data.authors || []).join(', ')}</div>
+                </div>`;
+                
+                html += `<div class="field">
+                    <div class="field-label">Year</div>
+                    <div class="field-value">${node.data.year || 'N/A'}</div>
+                </div>`;
+                
+                html += `<div class="field">
+                    <div class="field-label">Status</div>
+                    <div class="field-value">${(node.data.status || 'N/A').toUpperCase()}</div>
+                </div>`;
+                
+                // Check for paper summaries lazily
+                const docs = await checkPaperSummary(node.data.id);
+                if (docs && docs.length > 0) {
+                    html += `<button class="action-button" onclick="openPaperDocs('${node.data.id}')">📖 Read Summary</button>`;
+                }
+                
+                html += `<button class="action-button" onclick="focusOnNode('${nodeId}')">Show Connections</button>`;
+                
+            } else if (node.nodeType === 'researcher') {
+                html += `<div class="field">
+                    <div class="field-label">Affiliation</div>
+                    <div class="field-value">${node.data.affiliation || 'Unknown'}</div>
+                </div>`;
+                
+                if (node.data.contributions && node.data.contributions.length > 0) {
+                    html += `<div class="field">
+                        <div class="field-label">Key Contributions</div>
+                        <div class="field-value">`;
+                    for (const contrib of node.data.contributions) {
+                        html += `${contrib}<br>`;
+                    }
+                    html += `</div></div>`;
+                }
+                
+                if (node.data.key_papers && node.data.key_papers.length > 0) {
+                    html += `<div class="field">
+                        <div class="field-label">Papers</div>
+                        <div class="field-value">`;
+                    for (const paperId of node.data.key_papers) {
+                        const paperNode = nodesDataSet.get(paperId);
+                        if (paperNode) {
+                            html += `<span class="node-link" onclick="navigateToNode('${paperId}')">${paperNode.data.title || paperNode.label}</span><br>`;
+                        }
+                    }
+                    html += `</div></div>`;
+                }
+                
+                if (node.data.mentioned_in && node.data.mentioned_in.length > 0) {
+                    html += `<div class="field">
+                        <div class="field-label">Mentioned In</div>
+                        <div class="field-value">`;
+                    for (const paperId of node.data.mentioned_in) {
+                        const paperNode = nodesDataSet.get(paperId);
+                        if (paperNode) {
+                            html += `<span class="node-link" onclick="navigateToNode('${paperId}')">${paperNode.data.title || paperNode.label}</span><br>`;
+                        }
+                    }
+                    html += `</div></div>`;
+                }
+                
+                html += `<button class="action-button" onclick="focusOnNode('${nodeId}')">Show Connections</button>`;
+            }
+            
+            content.innerHTML = html;
+            
+            // Update breadcrumb
+            navigationHistory.push({ id: nodeId, label: node.label });
+            updateBreadcrumb();
+        }
+        
+        // Navigate to a node
+        function navigateToNode(nodeId) {
+            network.selectNodes([nodeId]);
+            network.focus(nodeId, {
+                scale: 1.5,
+                animation: true
+            });
+            showNodeDetails(nodeId);
+        }
+        
+        // Focus on a node and its connections
+        function focusOnNode(nodeId) {
+            const connectedNodes = network.getConnectedNodes(nodeId);
+            const nodesToShow = [nodeId, ...connectedNodes];
+            
+            // Update visibility
+            const nodesToUpdate = [];
+            for (const node of allNodes) {
+                if (nodesToShow.includes(node.id)) {
+                    nodesToUpdate.push({ ...node, hidden: false });
+                } else {
+                    nodesToUpdate.push({ ...node, hidden: true });
+                }
+            }
+            nodesDataSet.update(nodesToUpdate);
+            
+            // Focus on the node
+            network.focus(nodeId, {
+                scale: 1.2,
+                animation: true
+            });
+        }
+        
+        // Reset view
+        function resetView() {
+            // Show all nodes
+            const nodesToUpdate = allNodes.map(node => ({ ...node, hidden: false }));
+            nodesDataSet.update(nodesToUpdate);
+            
+            // Fit to screen
+            network.fit({
+                animation: true
+            });
+            
+            // Clear navigation history
+            navigationHistory = [];
+            updateBreadcrumb();
+        }
+        
+        // Filter nodes by type
+        function filterNodes(type) {
+            currentFilter = type;
+            
+            const nodesToUpdate = [];
+            for (const node of allNodes) {
+                if (type === 'all') {
+                    nodesToUpdate.push({ ...node, hidden: false });
+                } else {
+                    nodesToUpdate.push({ ...node, hidden: node.nodeType !== type });
+                }
+            }
+            nodesDataSet.update(nodesToUpdate);
+            
+            network.fit({ animation: true });
+        }
+        
+        // Update breadcrumb trail
+        function updateBreadcrumb() {
+            const breadcrumbPath = document.getElementById('breadcrumb-path');
+            
+            if (navigationHistory.length === 0) {
+                breadcrumbPath.innerHTML = 'Click a node to start exploring';
+                return;
+            }
+            
+            let html = '';
+            for (let i = 0; i < navigationHistory.length; i++) {
+                const item = navigationHistory[i];
+                if (i > 0) {
+                    html += '<span class="breadcrumb-separator">›</span>';
+                }
+                html += `<span class="breadcrumb-item" onclick="navigateToNode('${item.id}')">${item.label}</span>`;
+            }
+            breadcrumbPath.innerHTML = html;
+        }
+        
+        // Open paper documents in markdown panel
+        async function openPaperDocs(paperId) {
+            const docs = paperSummaries[paperId];
+            if (!docs || docs.length === 0) return;
+            
+            const panel = document.getElementById('markdown-panel');
+            const title = document.getElementById('markdown-title');
+            const tabs = document.getElementById('markdown-tabs');
+            const content = document.getElementById('markdown-content');
+            
+            // Get paper title
+            const paperNode = allNodes.find(n => n.id === paperId);
+            title.textContent = paperNode ? paperNode.data.title : paperId;
+            
+            // Create tabs
+            tabs.innerHTML = '';
+            for (const doc of docs) {
+                const tab = document.createElement('button');
+                tab.className = 'markdown-tab';
+                tab.textContent = `${doc.icon} ${doc.name}`;
+                tab.onclick = () => loadMarkdownDoc(doc.path, tabs.children);
+                tabs.appendChild(tab);
+            }
+            
+            // Load first document
+            if (docs.length > 0) {
+                tabs.children[0].classList.add('active');
+                await loadMarkdownDoc(docs[0].path, tabs.children);
+            }
+            
+            panel.classList.add('visible');
+            
+            // Load paper context for chat
+            loadPaperContextForChat(paperId);
+        }
+        
+        // Load and display markdown document
+        async function loadMarkdownDoc(path, allTabs) {
+            const content = document.getElementById('markdown-content');
+            
+            // Update active tab
+            for (const tab of allTabs) {
+                tab.classList.remove('active');
+            }
+            event.target.classList.add('active');
+            
+            try {
+                const response = await fetch(path);
+                if (!response.ok) {
+                    content.innerHTML = '<p>Failed to load document.</p>';
+                    return;
+                }
+                
+                const markdown = await response.text();
+                const html = marked.parse(markdown);
+                content.innerHTML = html;
+            } catch (error) {
+                content.innerHTML = '<p>Error loading document: ' + error.message + '</p>';
+            }
+        }
+        
+        // Close markdown panel
+        function closeMarkdownPanel() {
+            const panel = document.getElementById('markdown-panel');
+            panel.classList.remove('visible');
+        }
+        
+        // Search functionality
+        document.getElementById('search').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            if (searchTerm === '') {
+                filterNodes(currentFilter);
+                return;
+            }
+            
+            const nodesToUpdate = [];
+            for (const node of allNodes) {
+                const matches = node.label.toLowerCase().includes(searchTerm) ||
+                               (node.data.description || '').toLowerCase().includes(searchTerm);
+                
+                nodesToUpdate.push({ ...node, hidden: !matches });
+            }
+            nodesDataSet.update(nodesToUpdate);
+        });
+        
+        // Reload data from entities.json
+        async function reloadData() {
+            document.getElementById('loading').classList.remove('hidden');
+            
+            try {
+                await loadAndInitialize();
+                alert('Data reloaded successfully!');
+            } catch (error) {
+                alert('Failed to reload data: ' + error.message);
+            }
+            
+            document.getElementById('loading').classList.add('hidden');
+        }
+        
+        // Main initialization function
+        async function loadAndInitialize() {
+            try {
+                performance.mark('load-start');
+                
+                // Load entities
+                performance.mark('fetch-start');
+                entitiesData = await loadEntities();
+                performance.mark('fetch-end');
+                performance.measure('json-fetch', 'fetch-start', 'fetch-end');
+                console.log(`JSON fetch took: ${performance.getEntriesByName('json-fetch')[0].duration.toFixed(0)}ms`);
+                
+                // Convert to nodes and edges
+                performance.mark('transform-start');
+                allNodes = createNodes(entitiesData);
+                allEdges = createEdges(entitiesData);
+                performance.mark('transform-end');
+                performance.measure('data-transform', 'transform-start', 'transform-end');
+                console.log(`Data transformation took: ${performance.getEntriesByName('data-transform')[0].duration.toFixed(0)}ms`);
+                
+                // Paper summaries will be checked lazily when papers are clicked
+                
+                // Initialize DataSets
+                performance.mark('dataset-start');
+                nodesDataSet = new vis.DataSet(allNodes);
+                edgesDataSet = new vis.DataSet(allEdges);
+                performance.mark('dataset-end');
+                performance.measure('dataset-create', 'dataset-start', 'dataset-end');
+                console.log(`DataSet creation took: ${performance.getEntriesByName('dataset-create')[0].duration.toFixed(0)}ms`);
+                
+                // Initialize or update network
+                if (network === null) {
+                    initNetwork();
+                } else {
+                    // Update existing network
+                    network.setData({
+                        nodes: nodesDataSet,
+                        edges: edgesDataSet
+                    });
+                }
+                
+                // Log final stats
+                performance.mark('load-end');
+                performance.measure('total-load', 'load-start', 'load-end');
+                const totalTime = performance.getEntriesByName('total-load')[0].duration;
+                
+                console.log('='.repeat(60));
+                console.log('Knowledge Graph Loaded Successfully');
+                console.log('='.repeat(60));
+                console.log('Statistics:');
+                console.log(`  Concepts: ${(entitiesData.concepts || []).length}`);
+                console.log(`  Papers: ${(entitiesData.papers || []).length}`);
+                console.log(`  Researchers: ${(entitiesData.researchers || []).length}`);
+                console.log(`  Total Nodes: ${allNodes.length}`);
+                console.log(`  Edges: ${allEdges.length}`);
+                console.log('');
+                console.log('Performance Metrics:');
+                console.log(`  JSON Fetch: ${performance.getEntriesByName('json-fetch')[0].duration.toFixed(0)}ms`);
+                console.log(`  Data Transform: ${performance.getEntriesByName('data-transform')[0].duration.toFixed(0)}ms`);
+                console.log(`  DataSet Creation: ${performance.getEntriesByName('dataset-create')[0].duration.toFixed(0)}ms`);
+                console.log(`  Network Init: ${performance.getEntriesByName('network-init')[0].duration.toFixed(0)}ms`);
+                console.log(`  TOTAL TIME: ${totalTime.toFixed(0)}ms`);
+                console.log('');
+                console.log('Note: Paper summaries will be checked lazily when papers are clicked');
+                console.log('Note: Physics simulation will run in background after initial display');
+                console.log('='.repeat(60));
+                
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                throw error;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', async function() {
+            try {
+                await loadAndInitialize();
+                // Loading overlay will be hidden by network stabilization event
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 
+                    '<div style="text-align: center;">' +
+                    '<p style="color: red; font-size: 18px; margin-bottom: 20px;">Failed to load knowledge graph</p>' +
+                    '<p>' + error.message + '</p>' +
+                    '<p style="margin-top: 20px; font-size: 14px;">Make sure you\'re running the local server:<br><code>python start_server.py</code></p>' +
+                    '</div>';
+            }
+        });
+        
+        // ========================================
+        // Chat System
+        // ========================================
+        
+        const CHAT_API_URL = 'http://localhost:8001/api';
+        let currentChatSession = null;
+        let currentPaperId = null;
+        
+        // Toggle chat panel visibility
+        function toggleChatPanel() {
+            const panel = document.getElementById('chat-panel');
+            panel.classList.toggle('visible');
+            
+            // Focus input when opening
+            if (panel.classList.contains('visible')) {
+                document.getElementById('chat-input').focus();
+            }
+        }
+        
+        // Close chat panel
+        function closeChatPanel() {
+            const panel = document.getElementById('chat-panel');
+            panel.classList.remove('visible');
+        }
+        
+        // Update context indicator
+        function updateContextIndicator(paperId, fileCount) {
+            const indicator = document.getElementById('chat-context-indicator');
+            
+            if (paperId && paperId !== 'general') {
+                const paperNode = allNodes.find(n => n.id === paperId);
+                const paperTitle = paperNode ? paperNode.data.title : paperId;
+                indicator.textContent = `Context: ${paperTitle} (${fileCount} files loaded)`;
+                indicator.classList.add('visible');
+            } else {
+                indicator.textContent = 'Context: General (Knowledge Graph only)';
+                indicator.classList.remove('visible');
+            }
+        }
+        
+        // Add message to chat display
+        function addChatMessage(role, content) {
+            const messagesDiv = document.getElementById('chat-messages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}`;
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'chat-message-header';
+            headerDiv.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'chat-message-content';
+            
+            if (role === 'assistant') {
+                // Parse markdown-like content
+                contentDiv.innerHTML = parseSimpleMarkdown(content);
+            } else {
+                contentDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(headerDiv);
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Simple markdown parser for assistant messages
+        function parseSimpleMarkdown(text) {
+            // Convert **bold** to <strong>
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert *italic* to <em>
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            
+            // Convert `code` to <code>
+            text = text.replace(/`(.+?)`/g, '<code>$1</code>');
+            
+            // Convert paragraphs (double newline)
+            const paragraphs = text.split('\n\n').map(p => {
+                // Check if it's a list
+                if (p.trim().match(/^[\-\*\d]+\./)) {
+                    const items = p.split('\n').map(item => {
+                        const cleaned = item.trim().replace(/^[\-\*]\s*/, '').replace(/^\d+\.\s*/, '');
+                        return `<li>${cleaned}</li>`;
+                    }).join('');
+                    return `<ul>${items}</ul>`;
+                }
+                return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+            });
+            
+            return paragraphs.join('');
+        }
+        
+        // Show/hide loading indicator
+        function setChatLoading(isLoading) {
+            const loading = document.querySelector('.chat-loading');
+            const sendBtn = document.getElementById('chat-send');
+            const input = document.getElementById('chat-input');
+            
+            if (isLoading) {
+                loading.classList.add('visible');
+                sendBtn.disabled = true;
+                input.disabled = true;
+            } else {
+                loading.classList.remove('visible');
+                sendBtn.disabled = false;
+                input.disabled = false;
+            }
+        }
+        
+        // Show error message
+        function showChatError(message) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'chat-error';
+            errorDiv.textContent = `Error: ${message}`;
+            messagesDiv.appendChild(errorDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Send chat message
+        async function sendChatMessage(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to display
+            addChatMessage('user', message);
+            input.value = '';
+            input.style.height = 'auto';
+            
+            // Show loading
+            setChatLoading(true);
+            
+            try {
+                // Send to API
+                const response = await fetch(`${CHAT_API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: currentChatSession,
+                        paper_id: currentPaperId
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get response');
+                }
+                
+                const data = await response.json();
+                
+                // Update session ID
+                if (!currentChatSession) {
+                    currentChatSession = data.session_id;
+                }
+                
+                // Add assistant response
+                addChatMessage('assistant', data.response);
+                
+                // Update context indicator if context was loaded
+                if (data.context_loaded && data.context_files) {
+                    updateContextIndicator(currentPaperId, data.context_files.length);
+                }
+                
+                // Check if summary is needed
+                if (data.needs_summary) {
+                    showChatNotification('Context limit approaching. Consider starting a new thread or saving this session.');
+                }
+                
+            } catch (error) {
+                console.error('Chat error:', error);
+                showChatError(error.message);
+            } finally {
+                setChatLoading(false);
+                input.focus();
+            }
+        }
+        
+        // Show notification
+        function showChatNotification(message) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const notifDiv = document.createElement('div');
+            notifDiv.style.cssText = 'padding: 10px; background: #f39c12; color: white; border-radius: 6px; margin-bottom: 15px; font-size: 13px;';
+            notifDiv.textContent = message;
+            messagesDiv.appendChild(notifDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Start new thread
+        async function startNewThread() {
+            try {
+                const response = await fetch(`${CHAT_API_URL}/chat/new-thread`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        paper_id: currentPaperId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to create new thread');
+                }
+                
+                const data = await response.json();
+                currentChatSession = data.session_id;
+                
+                // Clear messages display (keep welcome message)
+                const messagesDiv = document.getElementById('chat-messages');
+                messagesDiv.innerHTML = `
+                    <div class="chat-message assistant">
+                        <div class="chat-message-header">Assistant</div>
+                        <div class="chat-message-content">
+                            <p>New conversation started. Previous thread has been saved.</p>
+                            <p>How can I help you with your research?</p>
+                        </div>
+                    </div>
+                `;
+                
+                showChatNotification('New thread created');
+                
+            } catch (error) {
+                console.error('Error creating new thread:', error);
+                showChatError(error.message);
+            }
+        }
+        
+        // Save current session
+        async function saveCurrentSession() {
+            if (!currentChatSession) {
+                showChatNotification('No active session to save');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${CHAT_API_URL}/chat/save-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: currentChatSession
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save session');
+                }
+                
+                showChatNotification('Session saved successfully');
+                
+            } catch (error) {
+                console.error('Error saving session:', error);
+                showChatError(error.message);
+            }
+        }
+        
+        // Load paper context when markdown panel opens
+        async function loadPaperContextForChat(paperId) {
+            currentPaperId = paperId;
+            
+            try {
+                const response = await fetch(`${CHAT_API_URL}/chat/load-context/${paperId}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateContextIndicator(paperId, data.file_count);
+                    console.log(`Loaded ${data.file_count} context files for ${paperId}`);
+                }
+            } catch (error) {
+                console.error('Error loading paper context:', error);
+            }
+        }
+        
+        // Auto-resize textarea
+        document.getElementById('chat-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+        
+        // Handle Enter key (send on Enter, new line on Shift+Enter)
+        document.getElementById('chat-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-input-form').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -671,7 +671,7 @@
         // Load entities.json dynamically
         async function loadEntities() {
             try {
-                const response = await fetch('entities.json');
+                const response = await fetch('data/entities.json');
                 if (!response.ok) {
                     throw new Error(`Failed to load entities.json: ${response.status}`);
                 }

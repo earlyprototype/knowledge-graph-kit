@@ -1336,7 +1336,7 @@
                 performance.measure('data-transform', 'transform-start', 'transform-end');
                 console.log(`Data transformation took: ${performance.getEntriesByName('data-transform')[0].duration.toFixed(0)}ms`);
                 
-                // Paper summaries will be checked lazily when papers are clicked
+                // Specification summaries will be checked lazily when specs are clicked
                 
                 // Initialize DataSets
                 performance.mark('dataset-start');
@@ -1379,7 +1379,7 @@
                 console.log(`  Network Init: ${performance.getEntriesByName('network-init')[0].duration.toFixed(0)}ms`);
                 console.log(`  TOTAL TIME: ${totalTime.toFixed(0)}ms`);
                 console.log('');
-                console.log('Note: Paper summaries will be checked lazily when papers are clicked');
+                console.log('Note: Specification summaries will be checked lazily when specs are clicked');
                 console.log('Note: Physics simulation will run in background after initial display');
                 console.log('='.repeat(60));
                 

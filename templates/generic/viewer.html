@@ -53,7 +53,7 @@
     <script>
         // Same basic structure as research template
         // Customize colors and entity handling based on config
-        fetch('data/entities.json')
+        fetch('_data/entities.json')
             .then(response => response.json())
             .then(data => initGraph(data))
             .catch(error => {

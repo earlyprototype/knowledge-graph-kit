@@ -147,7 +147,7 @@ relationships:
 
 # File paths
 paths:
-  data_dir: "./data"
+  data_dir: "./_data"
   entities_file: "entities.json"
   document_dir: "./system_docs"
   output_dir: "./output"

@@ -40,7 +40,7 @@ Thumbs.db
 
 # Project specific
 gemini_config.json
-data/
+_data/
 output/
 *.backup.json
 *_backup*.json

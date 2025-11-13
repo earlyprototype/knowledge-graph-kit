@@ -671,7 +671,7 @@
         // Load entities.json dynamically
         async function loadEntities() {
             try {
-                const response = await fetch('_data/entities.json');
+                const response = await fetch('entities.json');
                 if (!response.ok) {
                     throw new Error(`Failed to load entities.json: ${response.status}`);
                 }
@@ -754,8 +754,8 @@
         function createNodes(entities) {
             const nodes = [];
             
-            // Process concepts
-            for (const concept of entities.concepts || []) {
+            // Process elements
+            for (const concept of entities.elements || []) {
                 const color = COLORS[concept.type] || COLORS.default;
                 const desc = concept.description || "No description";
                 const truncDesc = desc.length > 150 ? desc.substring(0, 147) + "..." : desc;
@@ -774,8 +774,8 @@
                 });
             }
             
-            // Process researchers
-            for (const researcher of entities.researchers || []) {
+            // Process stakeholders
+            for (const researcher of entities.stakeholders || []) {
                 nodes.push({
                     id: researcher.id,
                     label: researcher.name,
@@ -790,8 +790,8 @@
                 });
             }
             
-            // Process papers
-            for (const paper of entities.papers || []) {
+            // Process insights
+            for (const paper of entities.insights || []) {
                 let authorsStr = (paper.authors || []).join(", ");
                 if (authorsStr.length > 50) {
                     authorsStr = authorsStr.substring(0, 47) + "...";
@@ -845,7 +845,7 @@
             }
             
             // Add implicit relationships from related_to fields
-            for (const concept of entities.concepts || []) {
+            for (const concept of entities.elements || []) {
                 for (const relatedId of concept.related_to || []) {
                     // Check if already exists
                     const existing = edges.some(e => e.from === concept.id && e.to === relatedId);

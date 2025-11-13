@@ -41,6 +41,7 @@ Thumbs.db
 # Project specific
 gemini_config.json
 _data/
+_TODO/
 output/
 *.backup.json
 *_backup*.json

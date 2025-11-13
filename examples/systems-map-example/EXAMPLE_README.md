@@ -47,7 +47,9 @@ This will:
 python server.py
 ```
 
-Then open: **http://localhost:8000**
+Then open: **http://localhost:8000/viewer.html**
+
+(The server should auto-open this in your browser)
 
 ### 3. Explore the System
 
@@ -65,7 +67,8 @@ If you want to ask questions about the system:
 1. Copy `gemini_config.template.json` to `gemini_config.json`
 2. Add your Gemini API key
 3. Run: `python start_server.py`
-4. Ask questions like:
+4. Open: **http://localhost:8000/viewer.html**
+5. Ask questions like:
    - "What depends on the Graph Manager?"
    - "Show me the data flow in this system"
    - "What are the external dependencies?"

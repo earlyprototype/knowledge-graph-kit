@@ -381,7 +381,7 @@ def build_knowledge_graph_kit_map():
     print("\nTo view the map, run:")
     print("   cd examples/systems-map-example")
     print("   python server.py")
-    print("\nThen open: http://localhost:8000")
+    print("\nThen open: http://localhost:8000/viewer.html")
 
 if __name__ == '__main__':
     build_knowledge_graph_kit_map()

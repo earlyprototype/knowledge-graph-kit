@@ -23,7 +23,7 @@ python build_map.py
 python server.py
 ```
 
-Then open http://localhost:8000
+Then open **http://localhost:8000/viewer.html**
 
 [View detailed documentation →](systems-map-example/EXAMPLE_README.md)
 

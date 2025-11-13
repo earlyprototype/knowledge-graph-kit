@@ -66,7 +66,7 @@ python server.py  # Basic
 python start_server.py  # With AI chat
 ```
 
-Open http://localhost:8000 in your browser.
+Open **http://localhost:8000/viewer.html** in your browser.
 
 ---
 
@@ -136,6 +136,7 @@ See a **real systems map** of the Knowledge Graph Kit codebase itself:
 cd examples/systems-map-example
 python build_map.py
 python server.py
+# Opens at http://localhost:8000/viewer.html
 ```
 
 **Includes:** 20 components, 39 relationships, full documentation

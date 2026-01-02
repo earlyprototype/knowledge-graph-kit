@@ -1,6 +1,11 @@
 """
 Basic usage examples for Knowledge Graph Kit
 """
+import sys
+import os
+
+# Add parent directory to path to import core modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.graph_manager import GraphManager
 
@@ -10,7 +15,7 @@ def research_example():
     print("Research Graph Example")
     print("-" * 50)
     
-    gm = GraphManager('../templates/research/config.yaml')
+    gm = GraphManager(config_path='../templates/research/config.yaml')
     
     # Add a concept
     gm.add_entity('primary', {
@@ -45,6 +50,7 @@ def research_example():
     gm.add_relationship('design-thinking', 'human-centered-design', 'relates-to')
     gm.add_relationship('doe-jane', 'design-thinking', 'theorized')
     
+    gm.save()
     print(f"Stats: {gm.get_stats()}")
     print("✓ Research graph created")
 
@@ -54,7 +60,7 @@ def systems_example():
     print("\nSystems Architecture Example")
     print("-" * 50)
     
-    gm = GraphManager('../templates/systems/config.yaml')
+    gm = GraphManager(config_path='../templates/systems/config.yaml')
     
     # Add a microservice
     gm.add_entity('primary', {
@@ -91,6 +97,7 @@ def systems_example():
                        description='Reads/writes user authentication data')
     gm.add_relationship('auth-service', 'platform-team', 'owned-by')
     
+    gm.save()
     print(f"Stats: {gm.get_stats()}")
     print("✓ Systems graph created")
 
@@ -100,7 +107,7 @@ def ecosystem_example():
     print("\nEcosystem Mapping Example")
     print("-" * 50)
     
-    gm = GraphManager('../templates/ecosystem/config.yaml')
+    gm = GraphManager(config_path='../templates/ecosystem/config.yaml')
     
     # Add an organization
     gm.add_entity('primary', {
@@ -139,6 +146,7 @@ def ecosystem_example():
     gm.add_relationship('investor-jane', 'seed-funding', 'funds',
                        description='Contributes capital')
     
+    gm.save()
     print(f"Stats: {gm.get_stats()}")
     print("✓ Ecosystem graph created")
 
@@ -156,4 +164,3 @@ if __name__ == "__main__":
     print("✓ All examples completed")
     print("\nNote: Examples use config from templates/ directory")
     print("In your projects, use: GraphManager('config.yaml')")
-

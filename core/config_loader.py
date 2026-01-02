@@ -12,7 +12,7 @@ class GraphConfig:
     """Loads and provides access to graph configuration"""
     
     def __init__(self, config_path: str = "config.yaml"):
-        self.config_path = Path(config_path)
+        self.config_path = Path(config_path).resolve()
         self.config = self._load_config()
         self._validate()
     
@@ -74,16 +74,19 @@ class GraphConfig:
         """Get all path configurations"""
         return self.config.get('paths', {})
     
-    def get_path(self, key: str) -> Path:
-        """Get specific path as Path object"""
-        path_str = self.config['paths'].get(key, '')
-        return Path(path_str)
+    def get_path(self, key: str) -> str:
+        """Get specific path as a string"""
+        return self.config['paths'].get(key, '')
+
+    def resolve_path(self, path_str: str) -> Path:
+        """Resolve a path relative to the config file's directory"""
+        return self.config_path.parent / Path(path_str)
     
     def get_entities_file_path(self) -> Path:
         """Get full path to entities.json"""
         data_dir = self.get_path('data_dir')
-        entities_file = self.config['paths'].get('entities_file', 'entities.json')
-        return data_dir / entities_file
+        entities_file = self.get_path('entities_file')
+        return self.resolve_path(data_dir) / entities_file
     
     def get_gemini_config(self) -> Dict:
         """Get Gemini AI configuration"""
@@ -102,4 +105,3 @@ class GraphConfig:
 def load_config(config_path: str = "config.yaml") -> GraphConfig:
     """Convenience function to load configuration"""
     return GraphConfig(config_path)
-

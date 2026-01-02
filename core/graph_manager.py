@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from .config_loader import GraphConfig
+from core.config_loader import GraphConfig
 
 
 class GraphManager:
@@ -129,7 +129,8 @@ class GraphManager:
     
     def merge_from_file(self, file_path: str):
         """Merge entities from another JSON file"""
-        with open(file_path, 'r', encoding='utf-8') as f:
+        merge_path = self.config.resolve_path(file_path)
+        with open(merge_path, 'r', encoding='utf-8') as f:
             new_data = json.load(f)
         
         self.merge(new_data)
@@ -224,4 +225,3 @@ class GraphManager:
                 issues.append(f"Relationship references unknown 'to' ID: {rel['to']}")
         
         return issues
-

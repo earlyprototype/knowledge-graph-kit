@@ -16,7 +16,7 @@ from core.graph_manager import GraphManager
 def build_knowledge_graph_kit_map():
     """Build a systems map of the Knowledge Graph Kit project."""
     
-    gm = GraphManager('config.yaml')
+    gm = GraphManager(config_path='config.yaml')
     
     print("Building Knowledge Graph Kit systems map...")
     
@@ -379,10 +379,8 @@ def build_knowledge_graph_kit_map():
     print("   - Total entities:", total_entities)
     print("   - Total relationships:", total_relationships)
     print("\nTo view the map, run:")
-    print("   cd examples/systems-map-example")
-    print("   python server.py")
+    print("   python examples/server.py --directory examples/systems-map-example")
     print("\nThen open: http://localhost:8000/viewer.html")
 
 if __name__ == '__main__':
     build_knowledge_graph_kit_map()
-

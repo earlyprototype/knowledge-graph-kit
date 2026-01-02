@@ -9,6 +9,7 @@ from pathlib import Path
 import json
 import webbrowser
 from threading import Timer
+from functools import partial
 
 
 class GraphHTTPHandler(http.server.SimpleHTTPRequestHandler):
@@ -37,12 +38,8 @@ def start_server(port: int = 8000, directory: str = ".", open_browser: bool = Tr
     """
     path = Path(directory).resolve()
     
-    # Change to directory
-    import os
-    os.chdir(path)
-    
-    # Create server
-    handler = GraphHTTPHandler
+    # Create server with the directory argument
+    handler = partial(GraphHTTPHandler, directory=str(path))
     
     try:
         with socketserver.TCPServer(("", port), handler) as httpd:
@@ -51,7 +48,7 @@ def start_server(port: int = 8000, directory: str = ".", open_browser: bool = Tr
             print(f"=" * 50)
             print(f"Server running at: http://localhost:{port}")
             print(f"Viewer URL: {url}")
-            print(f"Directory: {path}")
+            print(f"Serving files from: {path}")
             print(f"\nPress Ctrl+C to stop")
             print(f"=" * 50)
             
@@ -76,10 +73,9 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Start knowledge graph server')
     parser.add_argument('--port', type=int, default=8000, help='Port number')
-    parser.add_argument('--dir', type=str, default=".", help='Directory to serve')
+    parser.add_argument('--directory', type=str, default=".", help='Directory to serve')
     parser.add_argument('--no-browser', action='store_true', help='Don\'t open browser')
     
     args = parser.parse_args()
     
-    start_server(args.port, args.dir, not args.no_browser)
-
+    start_server(args.port, args.directory, not args.no_browser)

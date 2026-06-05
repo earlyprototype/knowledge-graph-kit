@@ -20,7 +20,7 @@ See `README.md` and `CONTRIBUTING.md` for full setup. Typical dev workflow:
 
 ```bash
 pip install -r requirements.txt
-python3 examples/systems-map-example/build_map.py
+(cd examples/systems-map-example && python3 build_map.py)
 python3 core/server.py --directory examples/systems-map-example --no-browser
 ```
 
@@ -31,7 +31,7 @@ Open `http://localhost:8000/viewer.html`. The viewer loads vis-network and marke
 There is no configured linter, formatter, or automated test suite in this repo. Manual verification:
 
 - `python3 examples/basic_usage.py` — exercises `GraphManager` against all four templates
-- `python3 examples/systems-map-example/build_map.py` — regenerates example graph data
+- `(cd examples/systems-map-example && python3 build_map.py)` — regenerates example graph data (`build_map.py` reads `config.yaml` from the current directory)
 - Serve the example and confirm `viewer.html` and `_data/entities.json` return HTTP 200
 
 ### Gotchas

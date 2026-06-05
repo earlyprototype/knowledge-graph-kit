@@ -20,7 +20,7 @@ See `README.md` and `CONTRIBUTING.md` for full setup. Typical dev workflow:
 
 ```bash
 pip install -r requirements.txt
-cd examples/systems-map-example && python3 build_map.py
+python3 examples/systems-map-example/build_map.py
 python3 core/server.py --directory examples/systems-map-example --no-browser
 ```
 

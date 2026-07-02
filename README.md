@@ -204,7 +204,7 @@ visualization:
     framework: "#9b59b6"
 ```
 
-[See full configuration guide →](docs/CONFIGURATION.md)
+[See the Generic template guide for all config options →](templates/generic/README.md)
 
 ---
 

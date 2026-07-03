@@ -1,0 +1,26 @@
+{
+  "_comment": "Configuration file for Gemini Chat API",
+  "_instructions": [
+    "1. Copy this file to 'gemini_config.json'",
+    "2. Replace YOUR_GEMINI_API_KEY with your actual API key from https://makersuite.google.com/app/apikey",
+    "3. The gemini_config.json file is git-ignored for security",
+    "4. Adjust temperature and max_tokens as needed"
+  ],
+  
+  "api_key": "YOUR_GEMINI_API_KEY",
+  "model": "gemini-2.5-pro",
+  "temperature": 0.7,
+  "max_tokens": 8000,
+  
+  "_model_options": [
+    "gemini-2.5-pro - Most capable, best for research (recommended)",
+    "gemini-2.0-flash-exp - Fast, cost-effective alternative",
+    "gemini-pro - Balanced performance"
+  ],
+  
+  "_temperature_guide": {
+    "0.0-0.3": "Deterministic, factual responses",
+    "0.4-0.7": "Balanced creativity and accuracy (recommended)",
+    "0.8-1.0": "More creative and exploratory responses"
+  }
+}

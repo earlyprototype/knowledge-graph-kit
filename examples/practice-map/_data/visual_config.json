@@ -1,0 +1,29 @@
+{
+  "colors": {
+    "organization": "#3E5C76",
+    "platform": "#5B7DB1",
+    "resource": "#4C7B6D",
+    "process": "#0F5257",
+    "capability": "#3E7C7C",
+    "value-stream": "#6E7F80",
+    "market": "#44576D",
+    "technology": "#5B7DB1",
+    "policy": "#5C6B73",
+    "infrastructure": "#3B6E71",
+    "default": "#8A97A0"
+  },
+  "node_sizes": {
+    "element": 24,
+    "process": 38,
+    "stakeholder": 15,
+    "insight": 18
+  },
+  "physics": {
+    "enabled": false,
+    "gravitationalConstant": -8000,
+    "centralGravity": 0.3,
+    "springLength": 220,
+    "springConstant": 0.04,
+    "damping": 0.12
+  }
+}

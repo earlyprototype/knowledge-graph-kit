@@ -35,6 +35,36 @@ Then open **http://localhost:8000/viewer.html**
 
 ---
 
+### 🗺️ Practice Map: earlyprototype's Public Project Ecosystem
+
+**Location:** `practice-map/`
+
+A meta-example that uses the Ecosystem Mapping template to map the author's
+own portfolio of public GitHub projects and practice areas. This is the map
+rendered by the kit's own live demo.
+
+**What it demonstrates:**
+- Ecosystem Mapping applied to a real personal practice, not a company
+- Config-driven colors, sizes and physics (no viewer edits needed)
+- A small, genuinely explorable graph rather than an exhaustive catalogue
+
+**Quick Start:**
+```bash
+cd practice-map
+python build_practice_map.py
+python server.py
+```
+
+Then open **http://localhost:8000/viewer.html**
+
+[View detailed documentation →](practice-map/EXAMPLE_README.md)
+
+**Graph Statistics:**
+- 15 Elements (3 practice-area hubs, 12 public projects)
+- 19 Relationships (enables, influences, regulates)
+
+---
+
 ## Code Examples
 
 ### Basic Usage

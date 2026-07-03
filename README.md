@@ -168,7 +168,7 @@ python server.py
 ```
 your-project/
 ├── config.yaml              # Configuration
-├── data/
+├── _data/
 │   └── entities.json        # Your knowledge graph
 ├── viewer.html              # Interactive visualization
 ├── server.py                # HTTP server

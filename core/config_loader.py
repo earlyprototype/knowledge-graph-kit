@@ -95,6 +95,11 @@ class GraphConfig:
     def get_visual_config(self) -> Dict:
         """Get visualization configuration"""
         return self.config.get('visualization', {})
+
+    def get_visual_config_file_path(self) -> Path:
+        """Get full path to the exported visual config JSON (read by viewer.html)"""
+        data_dir = self.get_path('data_dir')
+        return self.resolve_path(data_dir) / 'visual_config.json'
     
     def get_color_for_type(self, entity_type: str) -> str:
         """Get color for entity type"""

@@ -53,13 +53,24 @@ class GraphManager:
         """Save graph to JSON file"""
         # Ensure directory exists
         self.entities_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Update last_updated timestamp
         self.graph_data['metadata']['last_updated'] = datetime.now().strftime('%Y-%m-%d')
-        
+
         # Save with formatting
         with open(self.entities_path, 'w', encoding='utf-8') as f:
             json.dump(self.graph_data, f, indent=2, ensure_ascii=False)
+
+        # Export visualization settings (colors, node_sizes, physics) so the
+        # viewer can pick up config.yaml changes without parsing YAML client-side
+        self._save_visual_config()
+
+    def _save_visual_config(self):
+        """Write visualization config (colors, node_sizes, physics) as JSON for the viewer"""
+        visual_config_path = self.config.get_visual_config_file_path()
+        visual_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(visual_config_path, 'w', encoding='utf-8') as f:
+            json.dump(self.config.get_visual_config(), f, indent=2, ensure_ascii=False)
     
     def add_entity(self, category: str, entity: Dict[str, Any]) -> bool:
         """

@@ -640,23 +640,43 @@
     </div>
 
     <script type="text/javascript">
-        // Color scheme for different node types (matches Python version)
+        // Color scheme for different node types (matches Python version).
+        // These are fallback defaults - loadVisualConfig() below overlays
+        // config.yaml's visualization.colors once _data/visual_config.json loads.
         const COLORS = {
-            "methodology": "#3498db",
-            "technology": "#e74c3c",
-            "framework": "#9b59b6",
-            "principle": "#2ecc71",
-            "approach": "#f39c12",
-            "process": "#1abc9c",
-            "theory": "#34495e",
-            "skill": "#e67e22",
-            "role": "#95a5a6",
-            "phenomenon": "#c0392b",
-            "application": "#16a085",
-            "process-model": "#8e44ad",
+            "organization": "#3498db",
+            "platform": "#9b59b6",
+            "resource": "#2ecc71",
+            "process": "#f39c12",
+            "capability": "#1abc9c",
+            "value-stream": "#e74c3c",
+            "market": "#34495e",
+            "technology": "#e67e22",
+            "policy": "#c0392b",
+            "infrastructure": "#16a085",
             "default": "#7f8c8d"
         };
-        
+
+        // Node size fallback defaults, keyed by entity category. A key
+        // matching a specific 'type' value (e.g. "organization") overrides
+        // the category default for that type. Overlaid by config.yaml's
+        // visualization.node_sizes.
+        const NODE_SIZES = {
+            element: 20,
+            stakeholder: 15,
+            insight: 18
+        };
+
+        // Physics fallback defaults - overlaid by config.yaml's visualization.physics.
+        const PHYSICS_CONFIG = {
+            enabled: false,
+            gravitationalConstant: -30000,
+            centralGravity: 0.3,
+            springLength: 150,
+            springConstant: 0.04,
+            damping: 0.09
+        };
+
         // Global variables
         let network = null;
         let nodesDataSet = null;
@@ -671,7 +691,7 @@
         // Load entities.json dynamically
         async function loadEntities() {
             try {
-                const response = await fetch('entities.json');
+                const response = await fetch('_data/entities.json');
                 if (!response.ok) {
                     throw new Error(`Failed to load entities.json: ${response.status}`);
                 }
@@ -682,7 +702,23 @@
                 throw error;
             }
         }
-        
+
+        // Load visualization config (colors, node_sizes, physics) exported from
+        // config.yaml by GraphManager.save(). A missing file is not fatal - the
+        // hardcoded defaults above still apply.
+        async function loadVisualConfig() {
+            try {
+                const response = await fetch('_data/visual_config.json');
+                if (!response.ok) return;
+                const visualConfig = await response.json();
+                Object.assign(COLORS, visualConfig.colors || {});
+                Object.assign(NODE_SIZES, visualConfig.node_sizes || {});
+                Object.assign(PHYSICS_CONFIG, visualConfig.physics || {});
+            } catch (error) {
+                console.warn('No visual_config.json found, using built-in defaults:', error.message);
+            }
+        }
+
         // Check for paper summaries lazily (only when requested)
         async function checkPaperSummary(paperId) {
             // Return cached if already checked
@@ -767,7 +803,7 @@
                     color: color,
                     group: concept.type || "concept",
                     shape: "dot",
-                    size: 20,
+                    size: NODE_SIZES[concept.type] ?? NODE_SIZES.element,
                     font: { size: 14 },
                     nodeType: "concept",
                     data: concept
@@ -783,7 +819,7 @@
                     color: "#95a5a6",
                     group: "researcher",
                     shape: "box",
-                    size: 15,
+                    size: NODE_SIZES.stakeholder,
                     font: { size: 12 },
                     nodeType: "researcher",
                     data: researcher
@@ -803,7 +839,7 @@
                 const color = isAnalyzed
                     ? { background: "#f1c40f", border: "#95a5a6", highlight: { background: "#f4d03f", border: "#7f8c8d" } }
                     : { background: "#f39c12", border: "#d68910", highlight: { background: "#f5b041", border: "#f39c12" } };
-                const size = isAnalyzed ? 20 : 18;
+                const size = isAnalyzed ? NODE_SIZES.insight : Math.max(4, NODE_SIZES.insight - 2);
                 
                 const label = (paper.title || "Untitled").substring(0, 30) + "...";
                 
@@ -879,18 +915,18 @@
             
             const options = {
                 physics: {
-                    enabled: false,  // DISABLED for initial load - enabled after render
+                    enabled: PHYSICS_CONFIG.enabled,  // DISABLED for initial load - enabled after render
                     stabilization: {
                         enabled: true,
                         iterations: 50,  // Reduced for faster stabilization
                         updateInterval: 10  // More frequent UI updates
                     },
                     barnesHut: {
-                        gravitationalConstant: -30000,
-                        centralGravity: 0.3,
-                        springLength: 150,
-                        springConstant: 0.04,
-                        damping: 0.09,
+                        gravitationalConstant: PHYSICS_CONFIG.gravitationalConstant,
+                        centralGravity: PHYSICS_CONFIG.centralGravity,
+                        springLength: PHYSICS_CONFIG.springLength,
+                        springConstant: PHYSICS_CONFIG.springConstant,
+                        damping: PHYSICS_CONFIG.damping,
                         avoidOverlap: 0.5
                     }
                 },
@@ -1321,9 +1357,10 @@
             try {
                 performance.mark('load-start');
                 
-                // Load entities
+                // Load entities and visualization config
                 performance.mark('fetch-start');
                 entitiesData = await loadEntities();
+                await loadVisualConfig();
                 performance.mark('fetch-end');
                 performance.measure('json-fetch', 'fetch-start', 'fetch-end');
                 console.log(`JSON fetch took: ${performance.getEntriesByName('json-fetch')[0].duration.toFixed(0)}ms`);

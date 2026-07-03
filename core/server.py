@@ -7,9 +7,18 @@ import http.server
 import socketserver
 from pathlib import Path
 import json
+import sys
 import webbrowser
 from threading import Timer
 from functools import partial
+
+# Ensure stdout can print UTF-8 symbols (checkmarks, emoji) - Windows consoles
+# default to a codepage (e.g. cp1252) that can't encode them, which crashes
+# the server before it can start.
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except (AttributeError, ValueError):
+    pass
 
 
 class GraphHTTPHandler(http.server.SimpleHTTPRequestHandler):

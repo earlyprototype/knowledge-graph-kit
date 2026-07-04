@@ -578,11 +578,9 @@
     <div id="header">
         <h1>Practice Map <span id="live-badge" class="status-badge">LIVE</span></h1>
         <div id="controls">
-            <input type="text" id="search" placeholder="Search concepts, papers, researchers...">
+            <input type="text" id="search" placeholder="Search projects and practice areas...">
             <button onclick="filterNodes('all')">Show All</button>
-            <button onclick="filterNodes('concept')">Concepts Only</button>
-            <button onclick="filterNodes('paper')">Papers Only</button>
-            <button onclick="filterNodes('researcher')">Researchers Only</button>
+            <button onclick="filterNodes('project')">Projects Only</button>
             <button onclick="resetView()">Reset View</button>
             <button onclick="reloadData()">Refresh Data</button>
             <button id="chat-button" onclick="toggleChatPanel()">Chat with AI</button>
@@ -1252,6 +1250,11 @@
             for (const node of allNodes) {
                 if (type === 'all') {
                     nodesToUpdate.push({ ...node, hidden: false });
+                } else if (type === 'project') {
+                    // Practice-map projects are 'technology' elements;
+                    // practice-area hubs are 'process' elements and get hidden,
+                    // matching the existing "... Only" filter behaviour.
+                    nodesToUpdate.push({ ...node, hidden: node.data.type !== 'technology' });
                 } else {
                     nodesToUpdate.push({ ...node, hidden: node.nodeType !== type });
                 }
@@ -1432,9 +1435,9 @@
                 console.log('Knowledge Graph Loaded Successfully');
                 console.log('='.repeat(60));
                 console.log('Statistics:');
-                console.log(`  Concepts: ${(entitiesData.concepts || []).length}`);
-                console.log(`  Papers: ${(entitiesData.papers || []).length}`);
-                console.log(`  Researchers: ${(entitiesData.researchers || []).length}`);
+                console.log(`  Elements: ${(entitiesData.elements || []).length}`);
+                console.log(`  Stakeholders: ${(entitiesData.stakeholders || []).length}`);
+                console.log(`  Insights: ${(entitiesData.insights || []).length}`);
                 console.log(`  Total Nodes: ${allNodes.length}`);
                 console.log(`  Edges: ${allEdges.length}`);
                 console.log('');

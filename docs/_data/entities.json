@@ -1,0 +1,237 @@
+{
+  "metadata": {
+    "domain": "ecosystem",
+    "version": "1.0",
+    "created": "2026-07-04",
+    "last_updated": "2026-07-04"
+  },
+  "relationships": [
+    {
+      "from": "knowledge-graph-kit",
+      "to": "service-design",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "fablattice-gpt",
+      "to": "service-design",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "fablattice-gpt",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "kanbanger",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "kanbanger",
+      "to": "service-design",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "thought-bubble",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "thought-bubble",
+      "to": "service-design",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "notebooklm-mcps",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "hunch-kit",
+      "to": "research-play",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "hunch-kit",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "plugin-marketplace",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "lia-workflow-specs",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "metube",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "plasticflowers",
+      "to": "ai-systems",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "plasticflowers",
+      "to": "research-play",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "false-flag",
+      "to": "research-play",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "activation-tensor-resonance",
+      "to": "research-play",
+      "type": "enables",
+      "description": "Practices and builds out this area.",
+      "strength": "moderate"
+    },
+    {
+      "from": "thought-bubble",
+      "to": "activation-tensor-resonance",
+      "type": "influences",
+      "description": "Visualises ATR's activation-tensor experiments as an interactive mind-map.",
+      "strength": "moderate"
+    },
+    {
+      "from": "kanbanger",
+      "to": "plugin-marketplace",
+      "type": "regulates",
+      "description": "Governs how plugin-marketplace tasks move through review before being marked done.",
+      "strength": "moderate"
+    }
+  ],
+  "elements": [
+    {
+      "id": "service-design",
+      "label": "Service design",
+      "type": "process",
+      "description": "Practice area: designing tools, workflows and interfaces that make complex work usable for people."
+    },
+    {
+      "id": "ai-systems",
+      "label": "AI systems",
+      "type": "process",
+      "description": "Practice area: agentic tools, MCP servers and AI-integrated workflows."
+    },
+    {
+      "id": "research-play",
+      "label": "Research & play",
+      "type": "process",
+      "description": "Practice area: open-ended experiments probing how models and ideas behave off the well-trodden path."
+    },
+    {
+      "id": "knowledge-graph-kit",
+      "label": "knowledge-graph-kit",
+      "type": "technology",
+      "description": "Configurable LLM-integrated knowledge graph toolkit with templates for Research, Systems Map and Ecosystem Mapping — the tool that generated this map."
+    },
+    {
+      "id": "fablattice-gpt",
+      "label": "FabLatticeGPT",
+      "type": "technology",
+      "description": "OpenAI-Accelerator-inspired custom GPT that structures FabLab users’ prototyping plans before they touch the machines."
+    },
+    {
+      "id": "false-flag",
+      "label": "FALSE FLAG",
+      "type": "technology",
+      "description": "LLM-driven political-military crisis simulation with AI cabinet advisors and free-form, adjudicated decision-making."
+    },
+    {
+      "id": "kanbanger",
+      "label": "kanbanger",
+      "type": "technology",
+      "description": "MCP-driven kanban for mixed human/agent work, with a server-enforced human-approval gate before any task is marked done."
+    },
+    {
+      "id": "thought-bubble",
+      "label": "thought_bubble",
+      "type": "technology",
+      "description": "Turns dense documents into a visual webpage with logical flow."
+    },
+    {
+      "id": "notebooklm-mcps",
+      "label": "NotebookLM MCPs",
+      "type": "technology",
+      "description": "MCP servers putting Google NotebookLM into agent workflows, including a workflow-tuned \"diet\" companion server."
+    },
+    {
+      "id": "hunch-kit",
+      "label": "hunch_kit",
+      "type": "technology",
+      "description": "Structured experimentation framework with human-in-the-loop evaluation and provider-agnostic execution for testing hunches."
+    },
+    {
+      "id": "plugin-marketplace",
+      "label": "plugin marketplace",
+      "type": "technology",
+      "description": "Claude Code plugin marketplace (repo: early-prototype) — install with '/plugin marketplace add'."
+    },
+    {
+      "id": "lia-workflow-specs",
+      "label": "lia-workflow-specs",
+      "type": "technology",
+      "description": "Spec-driven framework for deliberate, understanding-first AI development — a counterweight to vibe coding."
+    },
+    {
+      "id": "metube",
+      "label": "meTube",
+      "type": "technology",
+      "description": "YouTube content extractor: dual-layer transcripts, auto-extracted entities and interactive HTML reports."
+    },
+    {
+      "id": "plasticflowers",
+      "label": "plasticFlowers",
+      "type": "technology",
+      "description": "Local-first live mindmap that captures speech and builds an emergent knowledge graph in real time via Gemini."
+    },
+    {
+      "id": "activation-tensor-resonance",
+      "label": "Activation Tensor Resonance",
+      "type": "technology",
+      "description": "Inspired by Alvin Lucier’s 'I Am Sitting in a Room': GPT-2's activation tensor is excited through iterative feedback until attractor states emerge."
+    }
+  ],
+  "stakeholders": [],
+  "insights": []
+}

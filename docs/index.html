@@ -384,18 +384,6 @@
             height: 30px;
         }
         
-        #chat-context-indicator {
-            font-size: 12px;
-            background: rgba(255,255,255,0.2);
-            padding: 6px 10px;
-            border-radius: 4px;
-            display: none;
-        }
-        
-        #chat-context-indicator.visible {
-            display: block;
-        }
-        
         #chat-controls {
             display: flex;
             gap: 8px;
@@ -560,14 +548,6 @@
             cursor: not-allowed;
         }
         
-        .chat-error {
-            padding: 12px 15px;
-            background: #e74c3c;
-            color: white;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
@@ -583,7 +563,7 @@
             <button onclick="filterNodes('project')">Projects Only</button>
             <button onclick="resetView()">Reset View</button>
             <button onclick="reloadData()">Refresh Data</button>
-            <button id="chat-button" onclick="toggleChatPanel()">Chat with AI</button>
+            <button id="chat-button" onclick="toggleChatPanel()">Ask about this practice</button>
         </div>
     </div>
     
@@ -615,28 +595,26 @@
     <div id="chat-panel">
         <div id="chat-header">
             <div id="chat-header-top">
-                <h3>Research Assistant</h3>
+                <h3>Ask about this practice</h3>
                 <button id="chat-close" onclick="closeChatPanel()">&times;</button>
             </div>
-            <div id="chat-context-indicator"></div>
             <div id="chat-controls">
-                <button class="chat-control-btn" onclick="startNewThread()">New Thread</button>
-                <button class="chat-control-btn" onclick="saveCurrentSession()">Save Session</button>
+                <button class="chat-control-btn" onclick="startNewChat()">New chat</button>
             </div>
         </div>
         <div id="chat-messages">
             <div class="chat-message assistant">
-                <div class="chat-message-header">Assistant</div>
+                <div class="chat-message-header">Guide</div>
                 <div class="chat-message-content">
-                    <p>Hello! I'm your research assistant. I have access to your knowledge graph and can help you understand the papers, concepts, and connections in your research.</p>
-                    <p>Ask me anything about the papers you've analysed, or click on a paper and open its summary to discuss it in detail.</p>
+                    <p>Hi! I can help you explore Thom's public practice — the projects on this map, the three practice areas they sit in, and how they connect.</p>
+                    <p>Ask about any project, or how two of them relate to each other.</p>
                 </div>
             </div>
         </div>
         <div class="chat-loading">Thinking</div>
         <div id="chat-input-area">
             <form id="chat-input-form" onsubmit="sendChatMessage(event)">
-                <textarea id="chat-input" placeholder="Ask about papers, concepts, or connections..." rows="1"></textarea>
+                <textarea id="chat-input" placeholder="Ask about a project, or how it connects to others…" rows="1"></textarea>
                 <button id="chat-send" type="submit">Send</button>
             </form>
         </div>
@@ -1315,9 +1293,6 @@
             }
             
             panel.classList.add('visible');
-            
-            // Load paper context for chat
-            loadPaperContextForChat(paperId);
         }
         
         // Load and display markdown document
@@ -1476,83 +1451,85 @@
         // ========================================
         // Chat System
         // ========================================
-        
-        const CHAT_API_URL = 'http://localhost:8001/api';
-        let currentChatSession = null;
-        let currentPaperId = null;
-        
+
+        // Cloudflare Worker endpoint. Update this after `npx wrangler deploy`
+        // prints the real workers.dev URL if it differs from the value below
+        // (see chat-worker/README.md).
+        const CHAT_WORKER_URL = 'https://kgk-practice-chat.YOUR-SUBDOMAIN.workers.dev';
+
+        const CHAT_HISTORY_LIMIT = 8;
+        const CHAT_ROLE_LABELS = { user: 'You', assistant: 'Guide' };
+        const CHAT_WELCOME_HTML = `
+            <div class="chat-message assistant">
+                <div class="chat-message-header">Guide</div>
+                <div class="chat-message-content">
+                    <p>Hi! I can help you explore Thom's public practice — the projects on this map, the three practice areas they sit in, and how they connect.</p>
+                    <p>Ask about any project, or how two of them relate to each other.</p>
+                </div>
+            </div>
+        `;
+        const CHAT_OFFLINE_REPLY =
+            "Sorry — I can't reach the assistant right now. The map itself still works, so feel free to keep exploring. Please try again shortly.";
+
+        let chatHistory = [];
+
         // Toggle chat panel visibility
         function toggleChatPanel() {
             const panel = document.getElementById('chat-panel');
             panel.classList.toggle('visible');
-            
+
             // Focus input when opening
             if (panel.classList.contains('visible')) {
                 document.getElementById('chat-input').focus();
             }
         }
-        
+
         // Close chat panel
         function closeChatPanel() {
             const panel = document.getElementById('chat-panel');
             panel.classList.remove('visible');
         }
-        
-        // Update context indicator
-        function updateContextIndicator(paperId, fileCount) {
-            const indicator = document.getElementById('chat-context-indicator');
-            
-            if (paperId && paperId !== 'general') {
-                const paperNode = allNodes.find(n => n.id === paperId);
-                const paperTitle = paperNode ? paperNode.data.title : paperId;
-                indicator.textContent = `Context: ${paperTitle} (${fileCount} files loaded)`;
-                indicator.classList.add('visible');
-            } else {
-                indicator.textContent = 'Context: General (Knowledge Graph only)';
-                indicator.classList.remove('visible');
-            }
-        }
-        
+
         // Add message to chat display
-        function addChatMessage(role, content) {
+        function addChatMessage(role, text) {
             const messagesDiv = document.getElementById('chat-messages');
-            
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${role}`;
-            
+
             const headerDiv = document.createElement('div');
             headerDiv.className = 'chat-message-header';
-            headerDiv.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            
+            headerDiv.textContent = CHAT_ROLE_LABELS[role] || role;
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'chat-message-content';
-            
+
             if (role === 'assistant') {
                 // Parse markdown-like content
-                contentDiv.innerHTML = parseSimpleMarkdown(content);
+                contentDiv.innerHTML = parseSimpleMarkdown(text);
             } else {
-                contentDiv.textContent = content;
+                contentDiv.textContent = text;
             }
-            
+
             messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(contentDiv);
             messagesDiv.appendChild(messageDiv);
-            
+
             // Scroll to bottom
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        
+
         // Simple markdown parser for assistant messages
         function parseSimpleMarkdown(text) {
             // Convert **bold** to <strong>
             text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            
+
             // Convert *italic* to <em>
             text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            
+
             // Convert `code` to <code>
             text = text.replace(/`(.+?)`/g, '<code>$1</code>');
-            
+
             // Convert paragraphs (double newline)
             const paragraphs = text.split('\n\n').map(p => {
                 // Check if it's a list
@@ -1565,16 +1542,16 @@
                 }
                 return `<p>${p.replace(/\n/g, '<br>')}</p>`;
             });
-            
+
             return paragraphs.join('');
         }
-        
+
         // Show/hide loading indicator
         function setChatLoading(isLoading) {
             const loading = document.querySelector('.chat-loading');
             const sendBtn = document.getElementById('chat-send');
             const input = document.getElementById('chat-input');
-            
+
             if (isLoading) {
                 loading.classList.add('visible');
                 sendBtn.disabled = true;
@@ -1585,185 +1562,72 @@
                 input.disabled = false;
             }
         }
-        
-        // Show error message
-        function showChatError(message) {
-            const messagesDiv = document.getElementById('chat-messages');
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'chat-error';
-            errorDiv.textContent = `Error: ${message}`;
-            messagesDiv.appendChild(errorDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-        
-        // Send chat message
+
+        // Send chat message to the Cloudflare Worker
         async function sendChatMessage(event) {
             event.preventDefault();
-            
+
             const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            // Add user message to display
-            addChatMessage('user', message);
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            addChatMessage('user', text);
+            chatHistory.push({ role: 'user', text });
             input.value = '';
             input.style.height = 'auto';
-            
-            // Show loading
+
             setChatLoading(true);
-            
+
             try {
-                // Send to API
-                const response = await fetch(`${CHAT_API_URL}/chat`, {
+                const response = await fetch(CHAT_WORKER_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: message,
-                        session_id: currentChatSession,
-                        paper_id: currentPaperId
+                        messages: chatHistory.slice(-CHAT_HISTORY_LIMIT)
                     })
                 });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to get response');
+
+                const data = await response.json().catch(() => null);
+                const reply = data && typeof data.reply === 'string' ? data.reply : null;
+
+                if (!reply) {
+                    // Unexpected shape or non-JSON response — fail gracefully.
+                    addChatMessage('assistant', CHAT_OFFLINE_REPLY);
+                    return;
                 }
-                
-                const data = await response.json();
-                
-                // Update session ID
-                if (!currentChatSession) {
-                    currentChatSession = data.session_id;
-                }
-                
-                // Add assistant response
-                addChatMessage('assistant', data.response);
-                
-                // Update context indicator if context was loaded
-                if (data.context_loaded && data.context_files) {
-                    updateContextIndicator(currentPaperId, data.context_files.length);
-                }
-                
-                // Check if summary is needed
-                if (data.needs_summary) {
-                    showChatNotification('Context limit approaching. Consider starting a new thread or saving this session.');
-                }
-                
+
+                // The worker returns a friendly `reply` even when Gemini is
+                // out of quota or erroring upstream, so this path covers
+                // both a normal answer and a graceful degradation message.
+                addChatMessage('assistant', reply);
+                chatHistory.push({ role: 'assistant', text: reply });
+
             } catch (error) {
-                console.error('Chat error:', error);
-                showChatError(error.message);
+                // Network failure / worker unreachable.
+                console.error('Chat request failed:', error);
+                addChatMessage('assistant', CHAT_OFFLINE_REPLY);
             } finally {
                 setChatLoading(false);
                 input.focus();
             }
         }
-        
-        // Show notification
-        function showChatNotification(message) {
-            const messagesDiv = document.getElementById('chat-messages');
-            const notifDiv = document.createElement('div');
-            notifDiv.style.cssText = 'padding: 10px; background: #f39c12; color: white; border-radius: 6px; margin-bottom: 15px; font-size: 13px;';
-            notifDiv.textContent = message;
-            messagesDiv.appendChild(notifDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // Start a new chat. Purely client-side — nothing is stored
+        // server-side, so there is nothing to save or reload.
+        function startNewChat() {
+            chatHistory = [];
+            document.getElementById('chat-messages').innerHTML = CHAT_WELCOME_HTML;
         }
-        
-        // Start new thread
-        async function startNewThread() {
-            try {
-                const response = await fetch(`${CHAT_API_URL}/chat/new-thread`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paper_id: currentPaperId
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to create new thread');
-                }
-                
-                const data = await response.json();
-                currentChatSession = data.session_id;
-                
-                // Clear messages display (keep welcome message)
-                const messagesDiv = document.getElementById('chat-messages');
-                messagesDiv.innerHTML = `
-                    <div class="chat-message assistant">
-                        <div class="chat-message-header">Assistant</div>
-                        <div class="chat-message-content">
-                            <p>New conversation started. Previous thread has been saved.</p>
-                            <p>How can I help you with your research?</p>
-                        </div>
-                    </div>
-                `;
-                
-                showChatNotification('New thread created');
-                
-            } catch (error) {
-                console.error('Error creating new thread:', error);
-                showChatError(error.message);
-            }
-        }
-        
-        // Save current session
-        async function saveCurrentSession() {
-            if (!currentChatSession) {
-                showChatNotification('No active session to save');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${CHAT_API_URL}/chat/save-session`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        session_id: currentChatSession
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to save session');
-                }
-                
-                showChatNotification('Session saved successfully');
-                
-            } catch (error) {
-                console.error('Error saving session:', error);
-                showChatError(error.message);
-            }
-        }
-        
-        // Load paper context when markdown panel opens
-        async function loadPaperContextForChat(paperId) {
-            currentPaperId = paperId;
-            
-            try {
-                const response = await fetch(`${CHAT_API_URL}/chat/load-context/${paperId}`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    updateContextIndicator(paperId, data.file_count);
-                    console.log(`Loaded ${data.file_count} context files for ${paperId}`);
-                }
-            } catch (error) {
-                console.error('Error loading paper context:', error);
-            }
-        }
-        
+
         // Auto-resize textarea
         document.getElementById('chat-input').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
-        
+
         // Handle Enter key (send on Enter, new line on Shift+Enter)
         document.getElementById('chat-input').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {

@@ -1,0 +1,10 @@
+# Wrangler local cache/state — machine-specific, never committed
+.wrangler/
+
+# Local secrets for `wrangler dev` — the real secret lives in the
+# Cloudflare dashboard, never in this repo
+.dev.vars
+.dev.vars.*
+
+# In case anyone runs npm/pnpm here
+node_modules/

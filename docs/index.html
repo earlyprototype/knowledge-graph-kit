@@ -455,6 +455,12 @@
             margin-bottom: 0;
         }
         
+        .chat-message.assistant .chat-message-content a {
+            color: #2980b9;
+            text-decoration: underline;
+            word-break: break-word;
+        }
+
         .chat-message.assistant .chat-message-content code {
             background: #f5f5f5;
             padding: 2px 6px;
@@ -606,8 +612,8 @@
             <div class="chat-message assistant">
                 <div class="chat-message-header">Guide</div>
                 <div class="chat-message-content">
-                    <p>Hi! I can help you explore Thom's public practice — the projects on this map, the three practice areas they sit in, and how they connect.</p>
-                    <p>Ask about any project, or how two of them relate to each other.</p>
+                    <p>Hi — welcome in! You're looking at Thom's practice: twelve projects across three areas of work, all connected. I know every corner of this map and I'm happy to show you around.</p>
+                    <p>Ask about whichever project catches your eye — or how two of them fit together.</p>
                 </div>
             </div>
         </div>
@@ -1463,8 +1469,8 @@
             <div class="chat-message assistant">
                 <div class="chat-message-header">Guide</div>
                 <div class="chat-message-content">
-                    <p>Hi! I can help you explore Thom's public practice — the projects on this map, the three practice areas they sit in, and how they connect.</p>
-                    <p>Ask about any project, or how two of them relate to each other.</p>
+                    <p>Hi — welcome in! You're looking at Thom's practice: twelve projects across three areas of work, all connected. I know every corner of this map and I'm happy to show you around.</p>
+                    <p>Ask about whichever project catches your eye — or how two of them fit together.</p>
                 </div>
             </div>
         `;
@@ -1519,28 +1525,59 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
+        // Escape HTML special characters so assistant output can never
+        // inject markup — all markdown rendering happens on escaped text.
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+
+        // Render a single already-escaped line: [text](url) anchors and bare
+        // URLs (http/https only, new tab), then `code`, **bold**, *italic*.
+        // Finished anchors are stashed as \u0000N\u0000 placeholders so the
+        // later passes can't touch their internals.
+        function renderInlineMarkdown(escaped) {
+            const anchors = [];
+            let html = escaped;
+
+            // [text](url)
+            html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, label, url) => {
+                anchors.push(`<a href="${url}" target="_blank" rel="noopener">${label}</a>`);
+                return `\u0000${anchors.length - 1}\u0000`;
+            });
+
+            // Bare URLs (trailing sentence punctuation stays text)
+            html = html.replace(/https?:\/\/[^\s<\u0000]+/g, url => {
+                const trimmed = url.replace(/[.,;:!?)']+$/, '');
+                const rest = url.slice(trimmed.length);
+                anchors.push(`<a href="${trimmed}" target="_blank" rel="noopener">${trimmed}</a>`);
+                return `\u0000${anchors.length - 1}\u0000${rest}`;
+            });
+
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+            return html.replace(/\u0000(\d+)\u0000/g, (m, i) => anchors[Number(i)]);
+        }
+
         // Simple markdown parser for assistant messages
         function parseSimpleMarkdown(text) {
-            // Convert **bold** to <strong>
-            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-            // Convert *italic* to <em>
-            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-            // Convert `code` to <code>
-            text = text.replace(/`(.+?)`/g, '<code>$1</code>');
-
-            // Convert paragraphs (double newline)
             const paragraphs = text.split('\n\n').map(p => {
-                // Check if it's a list
-                if (p.trim().match(/^[\-\*\d]+\./)) {
-                    const items = p.split('\n').map(item => {
-                        const cleaned = item.trim().replace(/^[\-\*]\s*/, '').replace(/^\d+\.\s*/, '');
-                        return `<li>${cleaned}</li>`;
+                const lines = p.split('\n');
+
+                // List paragraph: "- item", "* item" or "1. item"
+                if (/^\s*([-*]|\d+\.)\s+/.test(lines[0])) {
+                    const items = lines.map(item => {
+                        const cleaned = item.trim().replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '');
+                        return `<li>${renderInlineMarkdown(escapeHtml(cleaned))}</li>`;
                     }).join('');
                     return `<ul>${items}</ul>`;
                 }
-                return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+
+                const rendered = lines.map(l => renderInlineMarkdown(escapeHtml(l)));
+                return `<p>${rendered.join('<br>')}</p>`;
             });
 
             return paragraphs.join('');

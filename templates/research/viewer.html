@@ -1034,6 +1034,24 @@
             }, 10000);
         }
         
+        // Render an entity's dedicated 'url' field as a safe external link.
+        // Only absolute http(s) URLs are rendered; anything else is ignored,
+        // and the value is HTML-escaped before injection (no free-text linkification).
+        function renderUrlField(data) {
+            const url = data && data.url;
+            if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return '';
+            const escaped = url
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            return `<div class="field">
+                <div class="field-label">Link</div>
+                <div class="field-value"><a href="${escaped}" target="_blank" rel="noopener" style="word-break: break-all;">${escaped}</a></div>
+            </div>`;
+        }
+
         // Show node details in panel
         async function showNodeDetails(nodeId) {
             const node = nodesDataSet.get(nodeId);
@@ -1058,6 +1076,8 @@
                     <div class="field-label">Description</div>
                     <div class="field-value">${node.data.description || 'No description'}</div>
                 </div>`;
+
+                html += renderUrlField(node.data);
                 
                 if (node.data.source_papers && node.data.source_papers.length > 0) {
                     html += `<div class="field">
@@ -1107,6 +1127,8 @@
                     <div class="field-label">Status</div>
                     <div class="field-value">${(node.data.status || 'N/A').toUpperCase()}</div>
                 </div>`;
+
+                html += renderUrlField(node.data);
                 
                 // Check for paper summaries lazily
                 const docs = await checkPaperSummary(node.data.id);
@@ -1121,6 +1143,8 @@
                     <div class="field-label">Affiliation</div>
                     <div class="field-value">${node.data.affiliation || 'Unknown'}</div>
                 </div>`;
+
+                html += renderUrlField(node.data);
                 
                 if (node.data.contributions && node.data.contributions.length > 0) {
                     html += `<div class="field">

@@ -2,6 +2,8 @@
 
 Build, visualize, and explore knowledge graphs with an interactive web interface. Perfect for research synthesis, systems mapping, or stakeholder analysis.
 
+**[Live demo](https://earlyprototype.github.io/knowledge-graph-kit/)** — an interactive ecosystem map of the author's public projects, built with this kit.
+
 <div align="center">
 
 ![Knowledge Graph Kit](img/top.png)

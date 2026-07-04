@@ -35,6 +35,10 @@ entity_types:
       - name: description
         type: string
         required: true
+      - name: url
+        type: string
+        required: false
+        comment: "Canonical external link (e.g. repository or homepage); rendered as a link in the viewer"
       - name: sector
         type: string
         required: false

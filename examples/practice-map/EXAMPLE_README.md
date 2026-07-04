@@ -17,7 +17,7 @@ areas of `earlyprototype`, the author of this kit.
 public repository:
 - `knowledge-graph-kit` — this kit
 - `FabLatticeGPT`
-- `wargame` ("FALSE FLAG")
+- `false-flag` ("FALSE FLAG")
 - `kanbanger`
 - `thought_bubble`
 - NotebookLM MCP servers

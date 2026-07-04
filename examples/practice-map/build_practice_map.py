@@ -62,84 +62,96 @@ def build_practice_map():
         'id': 'knowledge-graph-kit',
         'label': 'knowledge-graph-kit',
         'type': 'technology',
-        'description': "Configurable LLM-integrated knowledge graph toolkit with templates for Research, Systems Map and Ecosystem Mapping — the tool that generated this map."
+        'description': "Configurable LLM-integrated knowledge graph toolkit with templates for Research, Systems Map and Ecosystem Mapping — the tool that generated this map.",
+        'url': 'https://github.com/earlyprototype/knowledge-graph-kit'
     })
 
     gm.add_entity('primary', {
         'id': 'fablattice-gpt',
         'label': 'FabLatticeGPT',
         'type': 'technology',
-        'description': 'OpenAI-Accelerator-inspired custom GPT that structures FabLab users’ prototyping plans before they touch the machines.'
+        'description': 'OpenAI-Accelerator-inspired custom GPT that structures FabLab users’ prototyping plans before they touch the machines.',
+        'url': 'https://github.com/earlyprototype/FabLatticeGPT'
     })
 
     gm.add_entity('primary', {
         'id': 'false-flag',
         'label': 'FALSE FLAG',
         'type': 'technology',
-        'description': 'LLM-driven political-military crisis simulation with AI cabinet advisors and free-form, adjudicated decision-making.'
+        'description': 'LLM-driven political-military crisis simulation with AI cabinet advisors and free-form, adjudicated decision-making.',
+        'url': 'https://github.com/earlyprototype/false-flag'
     })
 
     gm.add_entity('primary', {
         'id': 'kanbanger',
         'label': 'kanbanger',
         'type': 'technology',
-        'description': 'MCP-driven kanban for mixed human/agent work, with a server-enforced human-approval gate before any task is marked done.'
+        'description': 'MCP-driven kanban for mixed human/agent work, with a server-enforced human-approval gate before any task is marked done.',
+        'url': 'https://github.com/earlyprototype/kanbanger'
     })
 
     gm.add_entity('primary', {
         'id': 'thought-bubble',
         'label': 'thought_bubble',
         'type': 'technology',
-        'description': 'Turns dense documents into a visual webpage with logical flow.'
+        'description': 'Turns dense documents into a visual webpage with logical flow.',
+        'url': 'https://github.com/earlyprototype/thought_bubble'
     })
 
     gm.add_entity('primary', {
         'id': 'notebooklm-mcps',
         'label': 'NotebookLM MCPs',
         'type': 'technology',
-        'description': 'MCP servers putting Google NotebookLM into agent workflows, including a workflow-tuned "diet" companion server.'
+        'description': 'MCP servers putting Google NotebookLM into agent workflows, including a workflow-tuned "diet" companion server.',
+        'url': 'https://github.com/earlyprototype/notebooklm-py-MCP'
     })
 
     gm.add_entity('primary', {
         'id': 'hunch-kit',
         'label': 'hunch_kit',
         'type': 'technology',
-        'description': 'Structured experimentation framework with human-in-the-loop evaluation and provider-agnostic execution for testing hunches.'
+        'description': 'Structured experimentation framework with human-in-the-loop evaluation and provider-agnostic execution for testing hunches.',
+        'url': 'https://github.com/earlyprototype/hunch_kit'
     })
 
     gm.add_entity('primary', {
         'id': 'plugin-marketplace',
         'label': 'plugin marketplace',
         'type': 'technology',
-        'description': "Claude Code plugin marketplace (repo: early-prototype) — install with '/plugin marketplace add'."
+        'description': "Claude Code plugin marketplace (repo: early-prototype) — install with '/plugin marketplace add'.",
+        'url': 'https://github.com/earlyprototype/early-prototype'
     })
 
     gm.add_entity('primary', {
         'id': 'lia-workflow-specs',
         'label': 'lia-workflow-specs',
         'type': 'technology',
-        'description': 'Spec-driven framework for deliberate, understanding-first AI development — a counterweight to vibe coding.'
+        'description': 'Spec-driven framework for deliberate, understanding-first AI development — a counterweight to vibe coding.',
+        'url': 'https://github.com/earlyprototype/lia-workflow-specs'
     })
 
     gm.add_entity('primary', {
         'id': 'metube',
         'label': 'meTube',
         'type': 'technology',
-        'description': 'YouTube content extractor: dual-layer transcripts, auto-extracted entities and interactive HTML reports.'
+        'description': 'YouTube content extractor: dual-layer transcripts, auto-extracted entities and interactive HTML reports.',
+        'url': 'https://github.com/earlyprototype/meTube'
     })
 
     gm.add_entity('primary', {
         'id': 'plasticflowers',
         'label': 'plasticFlowers',
         'type': 'technology',
-        'description': 'Local-first live mindmap that captures speech and builds an emergent knowledge graph in real time via Gemini.'
+        'description': 'Local-first live mindmap that captures speech and builds an emergent knowledge graph in real time via Gemini.',
+        'url': 'https://github.com/earlyprototype/plasticFlowers'
     })
 
     gm.add_entity('primary', {
         'id': 'activation-tensor-resonance',
         'label': 'Activation Tensor Resonance',
         'type': 'technology',
-        'description': "Inspired by Alvin Lucier’s 'I Am Sitting in a Room': GPT-2's activation tensor is excited through iterative feedback until attractor states emerge."
+        'description': "Inspired by Alvin Lucier’s 'I Am Sitting in a Room': GPT-2's activation tensor is excited through iterative feedback until attractor states emerge.",
+        'url': 'https://github.com/earlyprototype/lucier-gpt2-activ-tensor-reson-experiments'
     })
 
     # ========================================

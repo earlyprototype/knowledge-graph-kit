@@ -24,8 +24,11 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 const ALLOWED_ORIGIN = 'https://earlyprototype.github.io';
 const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-const MAX_BODY_BYTES = 4096;
-const MAX_MESSAGE_CHARS = 1500;
+// 512 output tokens can realistically run to ~2500 chars, and that reply
+// rides along as history in every later message — these caps need headroom
+// above the model's own output length, not just above one message.
+const MAX_BODY_BYTES = 32768;
+const MAX_MESSAGE_CHARS = 3000;
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_OUTPUT_TOKENS = 512;
 

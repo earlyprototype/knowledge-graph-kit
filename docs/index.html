@@ -671,6 +671,7 @@
         let allNodes = [];
         let allEdges = [];
         let entitiesData = null;
+        let currentFocusRepo = null;  // entity id of the project node in focus, sent with each chat message
         let paperSummaries = {};
         let navigationHistory = [];
         let currentFilter = 'all';
@@ -949,6 +950,7 @@
             // Event listeners
             network.on("click", function(params) {
                 if (params.nodes.length > 0) {
+                    setFocusRepo(params.nodes[0]);
                     showNodeDetails(params.nodes[0]);
                 }
             });
@@ -1035,6 +1037,21 @@
                 <div class="field-label">Link</div>
                 <div class="field-value"><a href="${escaped}" target="_blank" rel="noopener" style="word-break: break-all;">${escaped}</a></div>
             </div>`;
+        }
+
+        // Track which project node is in focus so the chat can inject that
+        // repo's full context (README, stack, file tree) into its next answer.
+        // Clicking a practice-area (non-repo) node clears the focus.
+        function setFocusRepo(nodeId) {
+            const node = nodesDataSet.get(nodeId);
+            const isProject = node && node.data && node.data.type === 'technology' && node.data.url;
+            currentFocusRepo = isProject ? nodeId : null;
+            const input = document.getElementById('chat-input');
+            if (input) {
+                input.placeholder = isProject
+                    ? `Ask about ${node.label}…`
+                    : 'Ask about this practice…';
+            }
         }
 
         // Show node details in panel
@@ -1623,7 +1640,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        messages: chatHistory.slice(-CHAT_HISTORY_LIMIT)
+                        messages: chatHistory.slice(-CHAT_HISTORY_LIMIT),
+                        focus: currentFocusRepo
                     })
                 });
 

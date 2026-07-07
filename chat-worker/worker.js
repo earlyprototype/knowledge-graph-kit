@@ -12,11 +12,13 @@
  * No message content is logged anywhere in this file. See README.md.
  */
 
+import { REPO_CONTEXT } from './repo-context.generated.js';
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const ALLOWED_ORIGIN = 'https://earlyprototype.github.io';
@@ -208,6 +210,30 @@ function validateMessages(messages) {
 // Gemini call
 // ---------------------------------------------------------------------------
 
+// Base host prompt, optionally enriched with the one repo the visitor has in
+// focus on the map. `focus` is a short entity id from the frontend; unknown or
+// absent ids fall back to the base prompt. Note we only ever interpolate our
+// OWN generated data (never the raw focus string), so a bogus focus can't
+// inject anything — it just misses the lookup.
+function buildSystemInstruction(focus) {
+  const ctx = focus && REPO_CONTEXT[focus];
+  if (!ctx) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}
+
+---
+THE VISITOR IS CURRENTLY LOOKING AT: ${ctx.label} (${ctx.repo})
+Ground anything you say about this project in the real material below — its actual README, stack and file layout — not just the one-line summary further up. Reach for specifics (how it's built, notable files, the stack) when they genuinely illuminate the answer, but keep your warm host voice and the ~3-6 sentence length, and never dump the README back at them.
+
+STACK (GitHub language breakdown): ${ctx.stack}
+
+README:
+${ctx.readme}
+
+FILE TREE:
+${ctx.tree}
+---`;
+}
+
 function toGeminiContents(messages) {
   return messages.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
@@ -215,9 +241,9 @@ function toGeminiContents(messages) {
   }));
 }
 
-async function callGemini(apiKey, messages) {
+async function callGemini(apiKey, messages, focus) {
   const payload = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: buildSystemInstruction(focus) }] },
     contents: toGeminiContents(messages),
     generationConfig: {
       maxOutputTokens: MAX_OUTPUT_TOKENS,
@@ -296,6 +322,7 @@ export default {
     }
 
     const history = body.messages.slice(-MAX_HISTORY_MESSAGES);
+    const focus = typeof body.focus === 'string' ? body.focus : null;
 
     if (!env.GEMINI_API_KEY) {
       // Secret not configured yet — graceful, not a crash.
@@ -303,7 +330,7 @@ export default {
     }
 
     try {
-      const result = await callGemini(env.GEMINI_API_KEY, history);
+      const result = await callGemini(env.GEMINI_API_KEY, history, focus);
       if (!result.ok) {
         return jsonResponse(
           { reply: result.quota ? QUOTA_REPLY : UPSTREAM_ERROR_REPLY, limited: true },

@@ -13,7 +13,7 @@ static frontend.
   the `SYSTEM_PROMPT` constant in `worker.js` — built from
   `examples/practice-map/_data/entities.json` plus each project's real
   GitHub description).
-- Calls the Gemini API (`gemini-2.5-flash` — see note below) and returns the
+- Calls the Gemini API (`gemini-3.5-flash` — see note below) and returns the
   reply as `{ "reply": "..." }`.
 - If Gemini is out of quota, or any other upstream error occurs, it returns
   the same JSON shape with a friendly "I can't answer right now, but the
@@ -23,11 +23,26 @@ static frontend.
   `http://localhost:*` / `http://127.0.0.1:*` for local testing. Requests
   from any other origin are rejected.
 
-Model note: the task spec suggested `gemini-2.0-flash`, but that model is
-now deprecated per Google's own docs. This worker uses `gemini-2.5-flash`
-instead — the current stable "best price-performance" flash model and the
-direct successor in spirit. If Google ships something cheaper/better later,
-change the `GEMINI_MODEL` constant at the top of `worker.js`.
+Model note: uses `gemini-3.5-flash` (set via the `GEMINI_MODEL` constant at
+the top of `worker.js`), chosen for quality of repo explanation. Earlier
+versions used `gemini-2.0-flash` (shut down June 2026), then `gemini-2.5-flash`.
+If Google ships something better later, change that one constant.
+
+## Per-repo context injection
+
+When the frontend sends a `focus` field (the id of the project node the
+visitor has selected on the map), the worker injects that repo's real README,
+language breakdown and file tree into the system prompt for that one reply —
+so the chat discusses a project with real depth instead of a one-line blurb.
+An absent or unknown `focus` just falls back to the base host prompt.
+
+That per-repo data is baked into `repo-context.generated.js` by
+`build-context.mjs`. Refresh it whenever the repos change:
+
+```bash
+node build-context.mjs      # pulls READMEs / trees / languages via your gh login
+npx wrangler deploy         # bakes the refreshed data into the worker
+```
 
 ## Deploy
 

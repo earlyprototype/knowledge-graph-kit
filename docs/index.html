@@ -141,6 +141,14 @@
             margin-top: 10px;
             width: 100%;
         }
+
+        .action-button.chat-cta {
+            background: #27ae60;
+        }
+
+        .action-button.chat-cta:hover {
+            background: #229954;
+        }
         
         #breadcrumb {
             padding: 10px 20px;
@@ -1107,8 +1115,12 @@
                     html += `</div></div>`;
                 }
                 
+                if (node.data.type === 'technology' && node.data.url) {
+                    html += `<button class="action-button chat-cta" onclick="toggleChatPanel()">💬 Chat about this project</button>`;
+                }
+
                 html += `<button class="action-button" onclick="focusOnNode('${nodeId}')">Show Connections</button>`;
-                
+
             } else if (node.nodeType === 'paper') {
                 html += `<div class="field">
                     <div class="field-label">Title</div>

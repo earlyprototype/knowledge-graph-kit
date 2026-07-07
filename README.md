@@ -135,13 +135,13 @@ gm.save()
 See a **real systems map** of the Knowledge Graph Kit codebase itself:
 
 ```bash
-cd examples/systems-map-example
-python build_map.py
-python server.py
+# From the repo root:
+(cd examples/systems-map-example && python build_map.py)
+python core/server.py --directory examples/systems-map-example
 # Opens at http://localhost:8000/viewer.html
 ```
 
-**Includes:** 20 components, 39 relationships, full documentation
+**Includes:** 20 entities (16 components, 1 team, 3 docs), 39 relationships
 
 [View example documentation →](examples/systems-map-example/EXAMPLE_README.md)
 

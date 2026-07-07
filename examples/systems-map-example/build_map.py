@@ -378,8 +378,8 @@ def build_knowledge_graph_kit_map():
     
     print("   - Total entities:", total_entities)
     print("   - Total relationships:", total_relationships)
-    print("\nTo view the map, run:")
-    print("   python examples/server.py --directory examples/systems-map-example")
+    print("\nTo view the map, run (from the repo root):")
+    print("   python core/server.py --directory examples/systems-map-example")
     print("\nThen open: http://localhost:8000/viewer.html")
 
 if __name__ == '__main__':

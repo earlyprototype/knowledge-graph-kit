@@ -6,7 +6,7 @@ This is a **meta-example** showing how to use the Systems Mapping template to do
 
 This systems map documents the Knowledge Graph Kit codebase structure, including:
 
-### Components (21 total)
+### Components (16 total)
 - **Core Modules**: Graph Manager, Config Loader
 - **Services**: HTTP Server, Gemini API Server
 - **Tools**: Setup Wizard, Initialization Scripts
@@ -37,19 +37,20 @@ python build_map.py
 ```
 
 This will:
-- Create the `data/` directory
-- Generate `entities.json` with the complete systems map
+- Create the `_data/` directory
+- Generate `_data/entities.json` with the complete systems map (20 entities, 39 relationships)
 - Output statistics about the graph
 
 ### 2. View the Map
 
 ```bash
-python server.py
+# From the repo root:
+python core/server.py --directory examples/systems-map-example
 ```
 
 Then open: **http://localhost:8000/viewer.html**
 
-(The server should auto-open this in your browser)
+(The server should auto-open this in your browser; pass `--no-browser` to skip that)
 
 ### 3. Explore the System
 
@@ -66,9 +67,10 @@ If you want to ask questions about the system:
 
 1. Copy `gemini_config.template.json` to `gemini_config.json`
 2. Add your Gemini API key
-3. Run: `python start_server.py`
-4. Open: **http://localhost:8000/viewer.html**
-5. Ask questions like:
+3. Install the chat server extras: `pip install flask flask-cors`
+4. In this directory, run: `python gemini_api_server.py` (chat API on port 8001)
+5. Keep the viewer server from step 2 running and open: **http://localhost:8000/viewer.html**
+6. Ask questions like:
    - "What depends on the Graph Manager?"
    - "Show me the data flow in this system"
    - "What are the external dependencies?"
@@ -159,7 +161,7 @@ Use this approach for:
 
 ## Key Takeaways
 
-✅ **Start Simple** - This example has 21 components. Start with 5-10 key ones.
+✅ **Start Simple** - This example has 16 components. Start with 5-10 key ones.
 
 ✅ **Iterate** - Add detail as you discover dependencies
 

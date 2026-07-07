@@ -46,10 +46,6 @@ output/
 *.backup.json
 *_backup*.json
 
-# Test files
-test_*.py
-*_test.py
-
 # Internal helper docs (not for repo)
 READY_FOR_GITHUB.md
 GITHUB_UPLOAD_CHECKLIST.md

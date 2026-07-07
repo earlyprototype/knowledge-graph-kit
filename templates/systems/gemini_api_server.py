@@ -1,11 +1,9 @@
 """
 Gemini Chat API Server for Knowledge Graph Viewer
 
-Provides REST API endpoints for chat functionality with Gemini 2.5 Pro,
-including context management, session persistence, and intelligent summarization.
-
-Author: Research Paper Analysis System
-Version: 1.0.0
+Provides REST API endpoints for graph-grounded chat via the Gemini API
+(model set in gemini_config.json), with context management, session
+persistence, and summarization.
 """
 
 import os
@@ -24,12 +22,13 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent.parent  # AI/_Research directory
-CONFIG_FILE = Path(__file__).parent / "gemini_config.json"
-ENTITIES_FILE = Path(__file__).parent / "entities.json"
-CHAT_SESSIONS_DIR = BASE_DIR / ".lia" / "chat_sessions"
-PAPER_ANALYSIS_DIR = BASE_DIR / ".lia" / "paper"
-RESEARCH_PAPERS_DIR = BASE_DIR / "@Research" / "papers"
+BASE_DIR = Path(__file__).parent  # the project directory
+CONFIG_FILE = BASE_DIR / "gemini_config.json"
+ENTITIES_FILE = BASE_DIR / "_data" / "entities.json"  # graph data lives in _data/ (see config.yaml)
+CHAT_SESSIONS_DIR = BASE_DIR / ".chat_sessions"
+# Optional per-document context, loaded only if these directories exist:
+PAPER_ANALYSIS_DIR = BASE_DIR / "document_analysis"
+RESEARCH_PAPERS_DIR = BASE_DIR / "documents"
 
 # Global state
 gemini_model = None

@@ -1,0 +1,356 @@
+# Evidence Graph Configuration
+# For mapping research evidence: claims whose status changes over time,
+# connected by signed epistemic edges (supports / refutes / qualifies / ...).
+
+domain: evidence
+version: "1.0"
+
+# Entity type definitions
+entity_types:
+  primary:
+    name: claims
+    label_singular: Claim
+    label_plural: Claims
+    icon: "◈"
+    types:
+      - hypothesis
+      - finding
+      - concept
+    fields:
+      - name: id
+        type: string
+        required: true
+        comment: "kebab-case, e.g. f9-divine-period-2, h-fingerprint, concept-limit-cycle"
+      - name: label
+        type: string
+        required: true
+        comment: "Short display name, e.g. 'F9: Divine is a period-2 limit cycle'"
+      - name: type
+        type: enum
+        required: true
+        values:
+          - hypothesis
+          - finding
+          - concept
+      - name: status
+        type: enum
+        required: true
+        comment: "Where the claim currently stands epistemically"
+        values:
+          - supported
+          - refuted
+          - qualified
+          - retired
+          - corrected
+          - open
+          - untested
+      - name: description
+        type: string
+        required: true
+        comment: "1-3 sentences of plain prose"
+      - name: phase
+        type: string
+        required: false
+        comment: "Phase id from metadata.phases, e.g. phase-5"
+      - name: asserted
+        type: string
+        required: false
+        comment: "ISO date YYYY-MM-DD - when the claim was first made (drives the timeline)"
+      - name: retired
+        type: string
+        required: false
+        comment: "ISO date or null - when the claim stopped standing"
+      - name: doc_ref
+        type: string
+        required: false
+        comment: "Repo-relative path + anchor, e.g. docs/FINDINGS.md#f9-divine"
+      - name: evidence
+        type: array
+        required: false
+        comment: "Run ids that bear on this claim"
+
+  contributors:
+    name: runs
+    label_singular: Run
+    label_plural: Runs
+    icon: "▣"
+    types:
+      - run
+      - model
+      - "null-model"
+    fields:
+      - name: id
+        type: string
+        required: true
+        comment: "e.g. run-05-gated-resweep, model-gpt2-small"
+      - name: label
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+        values:
+          - run
+          - model
+          - "null-model"
+      - name: description
+        type: string
+        required: true
+      - name: script
+        type: string
+        required: false
+        comment: "Repo-relative path to the notebook/script (runs only)"
+      - name: output_dir
+        type: string
+        required: false
+        comment: "Repo-relative path to the run's outputs (runs only)"
+      - name: n
+        type: string
+        required: false
+        comment: "Sample description, e.g. '125 prompts, <=1000 iters'"
+      - name: date
+        type: string
+        required: false
+        comment: "ISO date YYYY-MM-DD"
+
+  sources:
+    name: sources
+    label_singular: Source
+    label_plural: Sources
+    icon: "◆"
+    types:
+      - doc
+      - artefact
+      - "prior-work"
+    fields:
+      - name: id
+        type: string
+        required: true
+        comment: "e.g. doc-findings, art-convergence-matrix-small, prior-radford-2019"
+      - name: title
+        type: string
+        required: true
+      - name: type
+        type: enum
+        required: true
+        values:
+          - doc
+          - artefact
+          - "prior-work"
+      - name: path
+        type: string
+        required: true
+        comment: "Repo-relative path or URL"
+      - name: description
+        type: string
+        required: false
+
+# Relationship type definitions
+# EPISTEMIC edges are signed and carry force; STRUCTURAL edges are neutral
+# plumbing; ASSOCIATIVE edges are soft links.
+relationships:
+  types:
+    # epistemic (signed)
+    - supports
+    - refutes
+    - qualifies
+    - corrects
+    - retires
+    - supersedes
+    - tests
+    # structural (neutral)
+    - produced-by
+    - run-on
+    - evidenced-by
+    - documented-in
+    # associative
+    - analogous-to
+    - breaks-down-at
+    - builds-on
+    - cites
+    - relates-to
+
+# File paths
+paths:
+  data_dir: "./_data"
+  entities_file: "entities.json"
+  document_dir: "./docs"
+  output_dir: "./output"
+
+# Visualization settings
+visualization:
+  # Node fill colour by node type (kept for the kit's generic loader)
+  colors:
+    hypothesis: "#6B4C8A"
+    finding: "#2E7D5B"
+    concept: "#5B7DB1"
+    run: "#B9812F"
+    model: "#B3423F"
+    null-model: "#8A8F94"
+    doc: "#7A8B99"
+    artefact: "#4F8F8B"
+    prior-work: "#8A6B4C"
+    default: "#7f8c8d"
+
+  # Canonical claim status palette. Claims are coloured by `status`, which
+  # overrides the type colour above; everything else falls back to `colors`.
+  status_colors:
+    supported: "#2E7D5B"
+    refuted: "#B3423F"
+    qualified: "#B9812F"
+    retired: "#8A8F94"
+    corrected: "#5B7DB1"
+    open: "#6B4C8A"
+    untested: "#9AA3A8"
+    default: "#7f8c8d"
+
+  # Canonical per-edge-type styling.
+  #   dashes: false = solid, true = dashed, [2, 4] = dotted
+  edge_styles:
+    supports:
+      color: "#2E7D5B"
+      dashes: false
+      width: 2.5
+      arrows: true
+    refutes:
+      color: "#B3423F"
+      dashes: true
+      width: 2.5
+      arrows: true
+    qualifies:
+      color: "#B9812F"
+      dashes: true
+      width: 2
+      arrows: true
+    corrects:
+      color: "#5B7DB1"
+      dashes: [2, 4]
+      width: 2
+      arrows: true
+    retires:
+      color: "#8A8F94"
+      dashes: [2, 4]
+      width: 2
+      arrows: true
+    supersedes:
+      color: "#5B7DB1"
+      dashes: [2, 4]
+      width: 2
+      arrows: true
+    tests:
+      color: "#6B4C8A"
+      dashes: false
+      width: 2
+      arrows: true
+    produced-by:
+      color: "#C7CDD1"
+      dashes: false
+      width: 1
+      arrows: true
+    run-on:
+      color: "#C7CDD1"
+      dashes: false
+      width: 1
+      arrows: true
+    evidenced-by:
+      color: "#C7CDD1"
+      dashes: false
+      width: 1
+      arrows: true
+    documented-in:
+      color: "#C7CDD1"
+      dashes: false
+      width: 1
+      arrows: true
+    analogous-to:
+      color: "#5B7DB1"
+      dashes: true
+      width: 1.5
+      arrows: false
+    breaks-down-at:
+      color: "#5B7DB1"
+      dashes: true
+      width: 1.5
+      arrows: false
+    builds-on:
+      color: "#B0B7BC"
+      dashes: false
+      width: 1
+      arrows: true
+    cites:
+      color: "#B0B7BC"
+      dashes: false
+      width: 1
+      arrows: true
+    relates-to:
+      color: "#B0B7BC"
+      dashes: false
+      width: 1
+      arrows: true
+    default:
+      color: "#C7CDD1"
+      dashes: false
+      width: 1
+      arrows: true
+
+  # Canonical node shape by node type
+  node_shapes:
+    hypothesis: diamond
+    finding: dot
+    concept: hexagon
+    run: square
+    model: triangle
+    null-model: triangleDown
+    doc: box
+    artefact: ellipse
+    prior-work: star
+    default: dot
+
+  node_sizes:
+    claim: 20
+    run: 15
+    source: 18
+
+  physics:
+    enabled: false
+    gravitationalConstant: -4000
+    centralGravity: 0.3
+    springLength: 150
+    springConstant: 0.04
+    damping: 0.09
+
+# AI context configuration (optional)
+gemini_context:
+  enabled: false
+  system_prompt: |
+    You are an evidence assistant with access to an evidence graph.
+    The graph contains claims (hypotheses, findings, concepts), runs (experiments,
+    models, null models) and sources (docs, artefacts, prior work), joined by signed
+    epistemic edges: supports, refutes, qualifies, corrects, retires, supersedes, tests.
+    Every claim carries a status (supported, refuted, qualified, retired, corrected,
+    open, untested) and dates (asserted, retired) so its standing can be read at any
+    point in time.
+    You help with:
+    - Reporting where a claim currently stands and what changed it
+    - Tracing the chain of runs and artefacts that support or refute a claim
+    - Surfacing contradictions: claims with both supporting and refuting evidence
+    - Finding open or untested claims that no run has yet addressed
+    - Reconstructing the state of the graph as of a given date or phase
+    Always cite the run ids, artefact paths, or doc_refs that back a statement, and
+    never assert something the graph does not record. Say "not recorded in the graph"
+    rather than guessing.
+
+  document_context_template: |
+    Current claim: {claim_label}
+    Type: {claim_type}
+    Status: {status}
+    Phase: {phase}
+    Asserted: {asserted}
+    Retired: {retired}
+    Documented in: {doc_ref}
+    Evidence: {evidence}
+    Supported by: {supporting}
+    Refuted by: {refuting}
+
+    This claim is part of an evidence graph with {total_claims} claims, {total_runs} runs
+    and {total_sources} sources.

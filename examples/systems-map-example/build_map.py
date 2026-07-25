@@ -138,6 +138,17 @@ def build_knowledge_graph_kit_map():
     })
     
     gm.add_entity('primary', {
+        'id': 'evidence-template',
+        'label': 'Evidence Template',
+        'type': 'subsystem',
+        'description': 'Pre-configured template for claim tracking: claims, runs and sources carrying epistemic status',
+        'version': '1.0',
+        'status': 'active',
+        'tech_stack': [],
+        'source_documents': ['templates-doc', 'evidence-readme']
+    })
+
+    gm.add_entity('primary', {
         'id': 'generic-template',
         'label': 'Generic Template',
         'type': 'subsystem',
@@ -264,7 +275,8 @@ def build_knowledge_graph_kit_map():
         'type': 'system-document',
         'key_components': [
             'graph-manager', 'config-loader', 'setup-wizard',
-            'research-template', 'systems-template', 'ecosystem-template', 'generic-template'
+            'research-template', 'systems-template', 'ecosystem-template',
+            'evidence-template', 'generic-template'
         ],
         'status': 'current'
     })
@@ -276,7 +288,8 @@ def build_knowledge_graph_kit_map():
         'last_updated': '2024-11-12',
         'type': 'system-document',
         'key_components': [
-            'research-template', 'systems-template', 'ecosystem-template', 'generic-template'
+            'research-template', 'systems-template', 'ecosystem-template',
+            'evidence-template', 'generic-template'
         ],
         'status': 'current'
     })
@@ -330,6 +343,8 @@ def build_knowledge_graph_kit_map():
                        description='Can initialize from systems template')
     gm.add_relationship('setup-wizard', 'ecosystem-template', 'integrates-with',
                        description='Can initialize from ecosystem template')
+    gm.add_relationship('setup-wizard', 'evidence-template', 'integrates-with',
+                       description='Can initialize from evidence template')
     gm.add_relationship('setup-wizard', 'generic-template', 'integrates-with',
                        description='Can initialize from generic template')
     gm.add_relationship('setup-wizard', 'init-script', 'calls',
@@ -342,7 +357,8 @@ def build_knowledge_graph_kit_map():
                        description='Optional AI chat integration')
     
     # Template relationships
-    for template_id in ['research-template', 'systems-template', 'ecosystem-template', 'generic-template']:
+    for template_id in ['research-template', 'systems-template', 'ecosystem-template',
+            'evidence-template', 'generic-template']:
         gm.add_relationship(template_id, 'config-yaml', 'consumes-data-from',
                            description='Contains template-specific configuration')
         gm.add_relationship(template_id, 'viewer-interface', 'integrates-with',

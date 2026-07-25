@@ -58,16 +58,18 @@ def select_template():
     print("1. Research     - Academic papers, concepts, researchers")
     print("2. Systems      - Software architecture, microservices, teams")
     print("3. Ecosystem    - Stakeholders, organizations, value flows")
-    print("4. Generic      - Blank canvas (customize everything)")
+    print("4. Evidence     - Claims, runs and sources with epistemic status")
+    print("5. Generic      - Blank canvas (customize everything)")
     print()
-    
-    choice = get_input("Select template (1-4)", options=['1', '2', '3', '4'])
-    
+
+    choice = get_input("Select template (1-5)", options=['1', '2', '3', '4', '5'])
+
     templates = {
         '1': ('research', 'Research'),
         '2': ('systems', 'Systems Architecture'),
         '3': ('ecosystem', 'Ecosystem Mapping'),
-        '4': ('generic', 'Generic (Customizable)')
+        '4': ('evidence', 'Evidence & Claims'),
+        '5': ('generic', 'Generic (Customizable)')
     }
     
     return templates[choice]

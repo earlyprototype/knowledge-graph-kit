@@ -207,8 +207,11 @@ def create_system_prompt(claim_context: Optional[Dict[str, str]] = None) -> str:
 
 The graph contains:
 - claims: hypotheses, findings and concepts. Each has a status (supported, refuted,
-  qualified, retired, corrected, open, untested), an `asserted` date and optionally a
-  `retired` date, so its standing can be read at any point in time.
+  not-supported, qualified, retired, corrected, open, untested), an `asserted` date and
+  optionally a `retired` date, so its standing can be read at any point in time.
+  "not-supported" is a null result - the evidence failed to back the claim without
+  contradicting it - and is distinct from "refuted" (evidence points the other way) and
+  from "qualified" (the claim survives in a narrowed or mixed form).
 - runs: experiments, models and null models that produce evidence.
 - sources: docs, artefacts and prior work.
 - relationships: signed epistemic edges (supports, refutes, qualifies, corrects,

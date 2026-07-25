@@ -59,7 +59,7 @@ def init_evidence_graph():
         label = gm.config.get_entity_label(category, plural=True)
         print(f"  - {label}")
 
-    print(f"\nClaim statuses: supported, refuted, qualified, retired, corrected, open, untested")
+    print(f"\nClaim statuses: supported, refuted, not-supported, qualified, retired, corrected, open, untested")
     print(f"Epistemic edges: supports, refutes, qualifies, corrects, retires, supersedes, tests")
 
     print(f"\nNext steps:")

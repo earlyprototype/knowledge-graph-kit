@@ -104,7 +104,7 @@ Choose the template that fits your use case:
 **Entities:** Claims, Runs, Sources  
 **Use Cases:** Hypothesis-to-finding chains, self-correction audits, provenance of a result
 
-Claims carry an epistemic **status** (`supported`, `refuted`, `qualified`, `retired`, `corrected`, `open`, `untested`) and edges carry **force** — `supports`/`refutes`/`qualifies`/`corrects`/`retires`/`supersedes`/`tests` — so the graph records not just what connects to what but what a result *did* to a prior belief. A timeline scrubber replays the programme by `asserted`/`retired` date.
+Claims carry an epistemic **status** (`supported`, `refuted`, `not-supported`, `qualified`, `retired`, `corrected`, `open`, `untested` — `not-supported` being the null result, distinct from a refutation) and edges carry **force** — `supports`/`refutes`/`qualifies`/`corrects`/`retires`/`supersedes`/`tests` — so the graph records not just what connects to what but what a result *did* to a prior belief. A timeline scrubber replays the programme by `asserted`/`retired` date.
 
 ### ⚙️ Generic
 **For:** Custom domains not covered above

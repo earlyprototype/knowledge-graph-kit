@@ -119,7 +119,9 @@ Experimental programmes and claim tracking: what was believed, what was run, wha
 
 **Claims** (Primary)
 - Types: hypothesis, finding, concept
-- Statuses: supported, refuted, qualified, retired, corrected, open, untested
+- Statuses: supported, refuted, not-supported, qualified, retired, corrected, open, untested
+  (`not-supported` is the null result: the evidence failed to back the claim without
+  contradicting it, which is neither `refuted` nor `qualified`)
 - Fields: label, type, status, description, phase, asserted, retired, doc_ref, evidence
 
 **Runs** (Contributors)

@@ -68,15 +68,23 @@ Every claim carries exactly one status. These are the canonical values and colou
 use these exact hex values everywhere (they are also in `config.yaml` under
 `visualization.status_colors`):
 
-| Status      | Colour    | Means                                                                |
-|-------------|-----------|----------------------------------------------------------------------|
-| `supported` | `#2E7D5B` | Evidence stands behind it and nothing has knocked it down.            |
-| `refuted`   | `#B3423F` | A run showed it to be false. The claim stays in the graph.            |
-| `qualified` | `#B9812F` | True, but only under conditions the original statement did not carry. |
-| `retired`   | `#8A8F94` | No longer in play - question dissolved, or scope moved on.            |
-| `corrected` | `#5B7DB1` | The claim was wrong in detail and has been restated correctly.        |
-| `open`      | `#6B4C8A` | Being actively worked; evidence exists but is not decisive.           |
-| `untested`  | `#9AA3A8` | Stated, never yet put to a run.                                       |
+| Status          | Colour    | Means                                                                |
+|-----------------|-----------|----------------------------------------------------------------------|
+| `supported`     | `#2E7D5B` | Evidence stands behind it and nothing has knocked it down.            |
+| `refuted`       | `#B3423F` | A run showed it to be false. The claim stays in the graph.            |
+| `not-supported` | `#8F5A57` | Null result - evidence failed to back it, without contradicting it.   |
+| `qualified`     | `#B9812F` | True, but only under conditions the original statement did not carry. |
+| `retired`       | `#8A8F94` | No longer in play - question dissolved, or scope moved on.            |
+| `corrected`     | `#5B7DB1` | The claim was wrong in detail and has been restated correctly.        |
+| `open`          | `#6B4C8A` | Being actively worked; evidence exists but is not decisive.           |
+| `untested`      | `#9AA3A8` | Stated, never yet put to a run.                                       |
+
+`not-supported` is the null-result slot, and it is deliberately narrow: `refuted` means
+the evidence points the other way, `qualified` means the claim survives in a narrowed or
+mixed form, and `not-supported` means neither happened - the run simply failed to back
+the claim. Use it when a disposition reads "not supported at pilot confidence"; do not
+launder a null result into `qualified`, which would put it in the same bucket as genuine
+partial support.
 
 Falsified claims are never deleted. Deleting a refuted claim erases the evidence
 that refuted it, and next year someone re-asserts it.

@@ -6,8 +6,11 @@ The evidence template is the only template that adds `status_colors` and
 contract (documented in TEMPLATES.md) and the completeness of the styling maps.
 """
 
+import json
+import math
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,6 +25,7 @@ from core.graph_manager import GraphManager
 
 TEMPLATES_DIR = REPO_ROOT / "templates"
 EVIDENCE_CONFIG = TEMPLATES_DIR / "evidence" / "config.yaml"
+EVIDENCE_VIEWER = TEMPLATES_DIR / "evidence" / "viewer.html"
 
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -31,15 +35,25 @@ HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 EXPECTED_CLAIM_TYPES = ["hypothesis", "finding", "concept"]
 
+# Ordered as a severity gradient. `not-supported` sits immediately after
+# `refuted`: it is the null result (evidence failed to back the claim) and must
+# not be conflated with a refutation or with `qualified` partial support.
 EXPECTED_STATUSES = [
     "supported",
     "refuted",
+    "not-supported",
     "qualified",
     "retired",
     "corrected",
     "open",
     "untested",
 ]
+
+NOT_SUPPORTED_COLOR = "#8F5A57"
+
+# Minimum CIE76 deltaE between the new status colour and every other swatch.
+# Below roughly this, two swatches are confusable at a glance in the legend.
+MIN_PERCEPTUAL_DISTANCE = 20.0
 
 EXPECTED_RUN_TYPES = ["run", "model", "null-model"]
 
@@ -180,6 +194,95 @@ def _field(config: GraphConfig, category: str, field_name: str):
         if field.get("name") == field_name:
             return field
     raise AssertionError(f"{category} has no field named {field_name!r}")
+
+
+def _srgb_to_lab(hex_colour: str):
+    """sRGB hex -> CIE L*a*b* (D65), so swatches can be compared perceptually."""
+    raw = hex_colour.lstrip("#")
+    channels = [int(raw[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+
+    def linearise(c):
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linearise(c) for c in channels)
+    x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375
+    y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750
+    z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041
+
+    def f(t):
+        return t ** (1 / 3) if t > (6 / 29) ** 3 else t / (3 * (6 / 29) ** 2) + 4 / 29
+
+    fx, fy, fz = f(x / 0.95047), f(y / 1.0), f(z / 1.08883)
+    return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+
+
+def _delta_e_76(a: str, b: str) -> float:
+    return math.sqrt(sum((p - q) ** 2 for p, q in zip(_srgb_to_lab(a), _srgb_to_lab(b))))
+
+
+def _viewer_source() -> str:
+    assert EVIDENCE_VIEWER.exists(), f"missing template viewer: {EVIDENCE_VIEWER}"
+    return EVIDENCE_VIEWER.read_text(encoding="utf-8")
+
+
+def _viewer_script() -> str:
+    """Every inline <script> block of the evidence viewer, concatenated."""
+    blocks = re.findall(
+        r"<script(?![^>]*src=)[^>]*>(.*?)</script>", _viewer_source(), re.S
+    )
+    assert blocks, "evidence viewer has no inline script blocks"
+    return "\n".join(blocks)
+
+
+def _js_array_literal(name: str) -> list:
+    """Pull `const NAME = ['a', 'b', ...];` out of the viewer source."""
+    match = re.search(rf"const\s+{name}\s*=\s*(\[.*?\]);", _viewer_script(), re.S)
+    assert match, f"viewer has no {name} array"
+    return json.loads(match.group(1).replace("'", '"'))
+
+
+def _js_object_literal(name: str) -> dict:
+    """Pull `const NAME = {...};` out of the viewer source (string values only)."""
+    match = re.search(rf"const\s+{name}\s*=\s*(\{{.*?\n\s*\}});", _viewer_script(), re.S)
+    assert match, f"viewer has no {name} object"
+    body = re.sub(r"//[^\n]*", "", match.group(1))
+    return json.loads(body.replace("'", '"'))
+
+
+# A DOM/vis-network stub just rich enough that the viewer's inline script can be
+# evaluated head-first under plain node, so viewer behaviour can be probed for
+# real instead of pattern-matched in the source.
+_VIEWER_STUB_PRELUDE = """
+function stubEl() {
+  return { addEventListener(){}, removeEventListener(){}, appendChild(){}, focus(){},
+           classList:{add(){},remove(){},toggle(){},contains(){return false;}},
+           style:{}, value:'', innerHTML:'', textContent:'', disabled:false,
+           scrollTop:0, scrollHeight:0, checked:false, dataset:{} };
+}
+globalThis.document = { getElementById(){ return stubEl(); },
+  createElement(){ return stubEl(); }, querySelector(){ return stubEl(); },
+  querySelectorAll(){ return []; }, addEventListener(){} };
+globalThis.addEventListener = function(){};
+globalThis.location = { search:'', href:'', hash:'' };
+globalThis.window = globalThis;
+globalThis.vis = { Network: function(){ return { on(){}, fit(){}, once(){} }; },
+                   DataSet: function(){ return { update(){}, get(){ return []; }, add(){} }; } };
+globalThis.fetch = function(){ return Promise.reject(new Error('offline')); };
+"""
+
+
+def _probe_viewer(tmp_path: Path, harness: str) -> dict:
+    """Run `harness` against the viewer's real script under node; return its JSON."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not available; cannot execute the viewer's script")
+    script = tmp_path / "viewer_probe.js"
+    script.write_text(_VIEWER_STUB_PRELUDE + _viewer_script() + harness, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(script)], capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, f"viewer script failed under node:\n{result.stderr}"
+    return json.loads(result.stdout)
 
 
 # --- Loading ---------------------------------------------------------------
@@ -340,6 +443,151 @@ def test_status_colors_are_distinct_per_status(evidence_config):
     status_colors = evidence_config.get_visual_config()["status_colors"]
     values = [status_colors[s].lower() for s in EXPECTED_STATUSES]
     assert len(values) == len(set(values)), "two statuses share a colour"
+
+
+# --- Visualization: the `not-supported` status ----------------------------
+
+
+def test_not_supported_is_in_the_status_enum_after_refuted(evidence_config):
+    values = _field(evidence_config, "primary", "status")["values"]
+    assert "not-supported" in values, "claims status enum must offer a null-result value"
+    assert values.index("not-supported") == values.index("refuted") + 1, (
+        "'not-supported' must sit immediately after 'refuted' in the severity gradient"
+    )
+
+
+def test_not_supported_colour_is_present_and_valid_hex(evidence_config):
+    status_colors = evidence_config.get_visual_config()["status_colors"]
+    assert "not-supported" in status_colors, "status_colors is missing 'not-supported'"
+    colour = status_colors["not-supported"]
+    assert HEX_RE.match(str(colour)), f"invalid hex colour for not-supported: {colour!r}"
+    assert colour == NOT_SUPPORTED_COLOR
+
+
+def test_not_supported_colour_is_perceptually_distinct(evidence_config):
+    """It is a muted sibling of `refuted`, but it must not read as `refuted`."""
+    status_colors = evidence_config.get_visual_config()["status_colors"]
+    subject = status_colors["not-supported"]
+    distances = {
+        name: _delta_e_76(subject, colour)
+        for name, colour in status_colors.items()
+        if name != "not-supported"
+    }
+    confusable = {
+        name: round(d, 2) for name, d in distances.items() if d < MIN_PERCEPTUAL_DISTANCE
+    }
+    assert not confusable, (
+        f"not-supported ({subject}) is confusable with: {confusable} "
+        f"(CIE76 deltaE below {MIN_PERCEPTUAL_DISTANCE})"
+    )
+
+
+# --- Visualization: the viewer's copy of the vocabulary -------------------
+
+
+def test_viewer_status_order_matches_the_config_vocabulary():
+    assert _js_array_literal("STATUS_ORDER") == EXPECTED_STATUSES
+
+
+def test_viewer_status_colors_match_the_config(evidence_config):
+    config_colors = evidence_config.get_visual_config()["status_colors"]
+    viewer_colors = _js_object_literal("STATUS_COLORS")
+    for status in EXPECTED_STATUSES + ["default"]:
+        assert status in viewer_colors, f"viewer STATUS_COLORS is missing {status!r}"
+        assert viewer_colors[status] == config_colors[status], (
+            f"viewer and config disagree on the {status!r} colour"
+        )
+
+
+def test_viewer_has_a_readable_label_for_every_status():
+    labels = _js_object_literal("STATUS_LABELS")
+    for status in EXPECTED_STATUSES:
+        assert status in labels, f"viewer STATUS_LABELS is missing {status!r}"
+        assert labels[status].strip(), f"{status!r} has an empty label"
+    assert labels["not-supported"] == "Not supported"
+
+
+def test_viewer_renders_not_supported_in_chips_and_legend(tmp_path):
+    probe = _probe_viewer(
+        tmp_path,
+        """
+allNodes = [
+  { id:'a', status:'supported',     entityType:'finding' },
+  { id:'b', status:'not-supported', entityType:'finding' }
+];
+colourMode = 'status';
+const present = collectPresentValues();
+buildChips();
+console.log(JSON.stringify({
+  present: present.statuses,
+  chipActive: activeStatuses['not-supported'],
+  colour: statusColour('not-supported'),
+  label: statusLabel('not-supported'),
+  nodeColour: nodeLiveColour({ status:'not-supported', entityType:'finding' }),
+  visible: nodeMatchesChips({ id:'b', status:'not-supported', entityType:'finding' })
+}));
+""",
+    )
+    assert probe["present"] == ["supported", "not-supported"]
+    assert probe["chipActive"] is True
+    assert probe["colour"] == NOT_SUPPORTED_COLOR
+    assert probe["label"] == "Not supported"
+    assert probe["nodeColour"] == NOT_SUPPORTED_COLOR
+    assert probe["visible"] is True
+
+
+def test_viewer_falls_back_gracefully_on_an_unknown_status(tmp_path):
+    """A status the viewer has never heard of must take the default colour and
+    stay reachable - chip, legend and canvas. A hardcoded vocabulary that
+    silently swallows unknown values is exactly the bug that forced the
+    `not-supported` migration; this guards the next extension too."""
+    probe = _probe_viewer(
+        tmp_path,
+        """
+allNodes = [
+  { id:'a', status:'supported',        entityType:'finding' },
+  { id:'b', status:'flibbertigibbet',  entityType:'finding' },
+  { id:'c', status:'toString',         entityType:'finding' }
+];
+colourMode = 'status';
+const present = collectPresentValues();
+buildChips();
+console.log(JSON.stringify({
+  present: present.statuses,
+  chipActive: activeStatuses['flibbertigibbet'],
+  colour: statusColour('flibbertigibbet'),
+  prototypeKeyColour: statusColour('toString'),
+  defaultColour: STATUS_COLORS.default,
+  label: statusLabel('flibbertigibbet'),
+  nodeColour: nodeLiveColour({ status:'flibbertigibbet', entityType:'finding' }),
+  visible: nodeMatchesChips({ id:'b', status:'flibbertigibbet', entityType:'finding' })
+}));
+""",
+    )
+    # It is offered as a filter chip rather than dropped ...
+    assert "flibbertigibbet" in probe["present"]
+    assert probe["chipActive"] is True
+    # ... it renders in the neutral default colour rather than `undefined` ...
+    assert probe["colour"] == probe["defaultColour"]
+    assert probe["nodeColour"] == probe["defaultColour"]
+    # ... an Object.prototype key is not mistaken for a palette entry ...
+    assert probe["prototypeKeyColour"] == probe["defaultColour"]
+    # ... it gets a readable label ...
+    assert probe["label"] == "Flibbertigibbet"
+    # ... and the node stays visible on the canvas.
+    assert probe["visible"] is True
+
+
+def test_viewer_status_order_never_gates_visibility():
+    """STATUS_ORDER must only sort; collectPresentValues and buildChips must both
+    append statuses it does not list."""
+    script = _viewer_script()
+    for func in ("collectPresentValues", "buildChips"):
+        body = re.search(rf"function {func}\(\) \{{(.*?)\n        \}}", script, re.S)
+        assert body, f"viewer has no {func}()"
+        assert "indexOf(s) === -1" in body.group(1), (
+            f"{func}() no longer appends statuses missing from STATUS_ORDER"
+        )
 
 
 # --- Visualization: edge_styles -------------------------------------------

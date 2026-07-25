@@ -39,6 +39,7 @@ entity_types:
         values:
           - supported
           - refuted
+          - not-supported
           - qualified
           - retired
           - corrected
@@ -197,6 +198,7 @@ visualization:
   status_colors:
     supported: "#2E7D5B"
     refuted: "#B3423F"
+    not-supported: "#8F5A57"
     qualified: "#B9812F"
     retired: "#8A8F94"
     corrected: "#5B7DB1"
@@ -327,9 +329,10 @@ gemini_context:
     The graph contains claims (hypotheses, findings, concepts), runs (experiments,
     models, null models) and sources (docs, artefacts, prior work), joined by signed
     epistemic edges: supports, refutes, qualifies, corrects, retires, supersedes, tests.
-    Every claim carries a status (supported, refuted, qualified, retired, corrected,
-    open, untested) and dates (asserted, retired) so its standing can be read at any
-    point in time.
+    Every claim carries a status (supported, refuted, not-supported, qualified, retired,
+    corrected, open, untested) and dates (asserted, retired) so its standing can be read
+    at any point in time. "not-supported" is a null result - the evidence failed to back
+    the claim without contradicting it - and is distinct from "refuted".
     You help with:
     - Reporting where a claim currently stands and what changed it
     - Tracing the chain of runs and artefacts that support or refute a claim

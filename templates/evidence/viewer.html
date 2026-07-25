@@ -968,12 +968,27 @@
         const STATUS_COLORS = {
             "supported": "#2E7D5B",
             "refuted": "#B3423F",
+            "not-supported": "#8F5A57",
             "qualified": "#B9812F",
             "retired": "#8A8F94",
             "corrected": "#5B7DB1",
             "open": "#6B4C8A",
             "untested": "#9AA3A8",
             "default": "#7f8c8d"
+        };
+
+        // Human-readable legend/chip text for a status token. Anything not listed
+        // here - including a status this viewer has never heard of - falls back to
+        // titleCase() rather than being dropped.
+        const STATUS_LABELS = {
+            "supported": "Supported",
+            "refuted": "Refuted",
+            "not-supported": "Not supported",
+            "qualified": "Qualified",
+            "retired": "Retired",
+            "corrected": "Corrected",
+            "open": "Open",
+            "untested": "Untested"
         };
 
         // Fallback colouring when colourMode === 'type' (and for runs/sources,
@@ -1042,7 +1057,10 @@
             damping: 0.09
         };
 
-        const STATUS_ORDER = ['supported', 'refuted', 'qualified', 'retired', 'corrected', 'open', 'untested'];
+        // Severity gradient. STATUS_ORDER only fixes the *order* of the statuses it
+        // knows about - it is never used to decide whether a status is allowed.
+        // Statuses found in the data but absent here are appended, not discarded.
+        const STATUS_ORDER = ['supported', 'refuted', 'not-supported', 'qualified', 'retired', 'corrected', 'open', 'untested'];
         const TYPE_ORDER = ['hypothesis', 'finding', 'concept', 'run', 'model', 'null-model', 'doc', 'artefact', 'prior-work'];
 
         const EPISTEMIC_TYPES = ['supports', 'refutes', 'qualifies', 'corrects', 'retires', 'supersedes', 'tests'];
@@ -1150,8 +1168,21 @@
             return String(text || '').replace(/[-_]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         }
 
+        function ownProp(obj, key) {
+            return obj !== null && obj !== undefined &&
+                Object.prototype.hasOwnProperty.call(obj, key);
+        }
+
+        // Unknown statuses are a supported case, not an error: they take the
+        // neutral default fill and stay visible/filterable in the UI. Inherited
+        // Object.prototype keys ('constructor', 'toString', ...) must not be
+        // mistaken for a palette entry, hence ownProp().
         function statusColour(status) {
-            return STATUS_COLORS[status] || STATUS_COLORS.default;
+            return ownProp(STATUS_COLORS, status) ? STATUS_COLORS[status] : STATUS_COLORS.default;
+        }
+
+        function statusLabel(status) {
+            return ownProp(STATUS_LABELS, status) ? STATUS_LABELS[status] : titleCase(status);
         }
 
         function typeColour(type) {
@@ -1565,12 +1596,17 @@
         // Filter chips
         // =====================================================================
         function collectPresentValues() {
-            const statuses = {};
-            const types = {};
+            // Null-prototype maps so a status literally named 'constructor' or
+            // 'toString' cannot masquerade as present.
+            const statuses = Object.create(null);
+            const types = Object.create(null);
             allNodes.forEach(function (node) {
                 if (node.status) statuses[node.status] = true;
                 if (node.entityType) types[node.entityType] = true;
             });
+            // Known statuses first, in severity order; then anything the data
+            // carries that this viewer's vocabulary does not list, so extending
+            // the vocabulary elsewhere can never make nodes vanish from here.
             const orderedStatuses = STATUS_ORDER.filter(function (s) { return statuses[s]; });
             Object.keys(statuses).forEach(function (s) {
                 if (orderedStatuses.indexOf(s) === -1) orderedStatuses.push(s);
@@ -1589,14 +1625,16 @@
             if (!statusBar || !typeBar) return;
 
             // Always offer the full canonical status vocabulary so the chip row
-            // is stable across datasets; mark ones absent from the data.
+            // is stable across datasets; mark ones absent from the data. Statuses
+            // the data carries but the canonical list does not know about are
+            // appended so they stay filterable instead of silently disappearing.
             const statusList = STATUS_ORDER.slice();
             present.statuses.forEach(function (s) {
                 if (statusList.indexOf(s) === -1) statusList.push(s);
             });
 
-            activeStatuses = {};
-            activeTypes = {};
+            activeStatuses = Object.create(null);
+            activeTypes = Object.create(null);
 
             let html = '<span class="chip-group-label">Status</span>';
             statusList.forEach(function (status) {
@@ -1604,6 +1642,7 @@
                 const count = allNodes.filter(function (n) { return n.status === status; }).length;
                 html += '<button class="chip active" id="chip-status-' + esc(status) + '"' +
                     ' data-status="' + esc(status) + '"' +
+                    ' title="' + esc(statusLabel(status)) + '"' +
                     ' onclick="toggleStatusChip(\'' + jsAttr(status) + '\')">' +
                     '<span class="swatch" style="background:' + esc(statusColour(status)) + '"></span>' +
                     esc(status) + ' (' + count + ')</button>';
@@ -1695,7 +1734,7 @@
                 const statuses = present.statuses.length ? present.statuses : STATUS_ORDER;
                 statuses.forEach(function (status) {
                     html += '<div class="legend-row"><span class="legend-swatch" style="background:' +
-                        esc(statusColour(status)) + '"></span><span>' + esc(status) + '</span></div>';
+                        esc(statusColour(status)) + '"></span><span>' + esc(statusLabel(status)) + '</span></div>';
                 });
                 html += '<div class="legend-note">Runs, models and sources carry no epistemic status; they keep their type colour.</div>';
             } else {

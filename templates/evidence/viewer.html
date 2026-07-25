@@ -2486,7 +2486,15 @@
 
             const options = {
                 physics: buildPhysicsOptions(),
-                layout: { randomSeed: 42, improvedLayout: true },
+                // hierarchical is stated explicitly rather than omitted. A mode
+                // that switches it on through layoutOverride must not be able to
+                // leave it on for the next graph merely by failing to mention it
+                // — vis merges these options, so an unstated key keeps its last
+                // value. Any mode that sets layoutOverride is also responsible
+                // for resetting it to null on the way out, since the layout
+                // signature below is derived from it and an unchanged signature
+                // skips the network rebuild entirely.
+                layout: { randomSeed: 42, improvedLayout: true, hierarchical: { enabled: false } },
                 interaction: {
                     hover: true,
                     tooltipDelay: 120,

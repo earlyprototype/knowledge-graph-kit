@@ -245,6 +245,32 @@ For the viewer plus the Gemini chat assistant:
 python start_server.py
 ```
 
+#### Viewer controls
+
+On a wide screen everything is on the surface: search, the *Colour by* selector,
+*Show All* / *Reset View* / *Refresh Data* / *Chat with AI*, the status and type
+chip rows, the breadcrumb, the legend over the canvas, and the timeline scrubber
+pinned to the bottom.
+
+Below 769px (phones) the same controls are still all there, just folded up so the
+graph gets the screen:
+
+| Control | Where it goes |
+|---|---|
+| Search | stays in the header |
+| Status + type chips | behind the **Filters** button; the panel overlays the graph |
+| Legend | behind the **Legend** button; overlays the graph, closed by default |
+| Colour by, Show All, Reset View, Refresh Data, Chat with AI | behind the **⋮** overflow button |
+| Breadcrumb | hidden until you have actually walked a path |
+| Node details | a bottom sheet with its own scroll and a close (×) button |
+| Timeline | still pinned to the bottom, compacted to the play button, scrubber and date |
+
+The **Filters** button reads `Filters (12 of 17)` whenever any chip is off, so a
+shut panel can never be the unexplained reason nodes are missing. One overlay is
+open at a time; `Esc`, a tap on bare canvas, or opening a node closes them. All
+three toggles are real buttons with `aria-expanded`, so they work from the
+keyboard.
+
 ## Worked example: how a claim moves
 
 ```

@@ -1,8 +1,10 @@
 # Knowledge Graph Kit
 
-Build, visualize, and explore knowledge graphs with an interactive web interface. Perfect for research synthesis, systems mapping, or stakeholder analysis.
+A configurable toolkit for building, exploring, and sharing knowledge graphs — served as an interactive web page you can hand to anyone, with no graph database to stand up.
 
-**[Live demo](https://earlyprototype.github.io/knowledge-graph-kit/)** — an interactive ecosystem map of the author's public projects, built with this kit.
+I do a lot of systems and ecosystem mapping in my design practice — stakeholder networks, value flows, research synthesis — and kept rebuilding the same scaffolding every time: a way to turn a pile of interconnected notes into something you can actually *click through* and reason about. This kit is that scaffolding, generalised. Point it at a domain, pick a template, and you get a browseable graph with provenance tracking, search, and an optional AI chat layered over the top.
+
+**[Explore the live demo →](https://earlyprototype.github.io/knowledge-graph-kit/)** — an ecosystem map of my own public projects, built with this kit. It's also what the map on my GitHub profile links to.
 
 <div align="center">
 
@@ -268,7 +270,7 @@ pip install -r requirements.txt
 
 ## Contributing
 
-Contributions welcome! Please feel free to submit a Pull Request.
+This began as my own tool, so it's shaped around how I work — which leaves plenty of room to make it more general. If you build a new template or a better layout, I'd like to see it: open an issue or a PR.
 
 ---
 
@@ -280,5 +282,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgements
 
-Built for researchers, architects, and analysts who need to understand complex, interconnected systems.
+Built out of my systems-design practice, for anyone who needs to see how the pieces of a complex system actually connect.
 

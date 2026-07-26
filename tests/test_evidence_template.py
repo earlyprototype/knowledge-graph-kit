@@ -26,6 +26,7 @@ from core.graph_manager import GraphManager
 TEMPLATES_DIR = REPO_ROOT / "templates"
 EVIDENCE_CONFIG = TEMPLATES_DIR / "evidence" / "config.yaml"
 EVIDENCE_VIEWER = TEMPLATES_DIR / "evidence" / "viewer.html"
+EVIDENCE_README = TEMPLATES_DIR / "evidence" / "README.md"
 
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -33,7 +34,21 @@ HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 # These lists are the test's own copy of TEMPLATES.md "Evidence Template".
 # If config.yaml changes, this file must be changed deliberately with it.
 
-EXPECTED_CLAIM_TYPES = ["hypothesis", "finding", "concept"]
+EXPECTED_CLAIM_TYPES = ["hypothesis", "finding", "concept", "question"]
+
+# `question` is additive and goes last: the three original types keep their
+# positions so an index-based reader cannot be silently re-pointed.
+ORIGINAL_CLAIM_TYPES = ["hypothesis", "finding", "concept"]
+
+QUESTION_COLOR = "#A8477A"
+QUESTION_SHAPE = "circle"
+
+# The statuses a `question` may carry. `open` is the whole point: it is the only
+# claim type for which `open` is a work signal rather than the default a claim
+# with no epistemic verdict falls into. There is deliberately no "answered"
+# status - an answered question is `retired` and the answer is the claim on the
+# other end of its incoming retires/supersedes edge.
+QUESTION_STATUSES = {"open", "untested", "retired"}
 
 # Ordered as a severity gradient. `not-supported` sits immediately after
 # `refuted`: it is the null result (evidence failed to back the claim) and must
@@ -70,6 +85,22 @@ EPISTEMIC_EDGES = [
 ]
 STRUCTURAL_EDGES = ["produced-by", "run-on", "evidenced-by", "documented-in"]
 ASSOCIATIVE_EDGES = [
+    "analogous-to",
+    "breaks-down-at",
+    "builds-on",
+    "cites",
+    "relates-to",
+    # dependency between open work and what it gates. Associative, not
+    # epistemic: a blocker changes whether a claim can be settled yet, never
+    # whether it is true.
+    "blocks",
+    "blocked-by",
+]
+DEPENDENCY_EDGES = ["blocks", "blocked-by"]
+DEPENDENCY_COLOR = "#A8477A"
+
+# The five associative edges that existed before the dependency pair was added.
+ORIGINAL_ASSOCIATIVE_EDGES = [
     "analogous-to",
     "breaks-down-at",
     "builds-on",
@@ -360,6 +391,121 @@ def test_claim_statuses_match_contract(evidence_config):
     assert _field(evidence_config, "primary", "status")["values"] == EXPECTED_STATUSES
 
 
+# --- The `question` claim type --------------------------------------------
+
+
+def test_question_is_in_the_claim_type_enum(evidence_config):
+    """A question is what the record leaves open: distinct from a hypothesis,
+    which asserts something testable, and from a concept, which is vocabulary."""
+    for values in (
+        evidence_config.get_entity_type_config("primary")["types"],
+        _field(evidence_config, "primary", "type")["values"],
+    ):
+        assert "question" in values, "claims must offer a `question` type"
+
+
+def test_adding_question_did_not_disturb_the_original_claim_types(evidence_config):
+    """Additive means additive: the three original types keep their order and
+    their positions, and `question` is appended after them."""
+    values = _field(evidence_config, "primary", "type")["values"]
+    assert values[: len(ORIGINAL_CLAIM_TYPES)] == ORIGINAL_CLAIM_TYPES
+    assert values[-1] == "question"
+
+
+def test_question_adds_no_new_status_values(evidence_config):
+    """The `question` type reuses the status vocabulary rather than extending it.
+
+    An open question is `open` - which is exactly the point, since `open` was
+    previously only ever the default a concept fell into when nobody had an
+    epistemic verdict to record. An *answered* question does not get an
+    "answered" status: it is `retired`, and the answer is carried by the
+    incoming retires/supersedes edge from whatever answered it.
+    """
+    values = _field(evidence_config, "primary", "status")["values"]
+    assert values == EXPECTED_STATUSES, (
+        "the question type must not add status values; it reuses open/untested/retired"
+    )
+    assert QUESTION_STATUSES <= set(values)
+    assert "answered" not in values, (
+        "an answered question is `retired` with a retires edge naming the answer; "
+        "a status value meaning 'answered' throws away which result did the answering"
+    )
+
+
+def test_question_status_semantics_are_documented(evidence_config):
+    """The status enum's comment has to say how a question uses the vocabulary,
+    or the distinction is folklore rather than schema."""
+    comment = str(_field(evidence_config, "primary", "status").get("comment", "")).lower()
+    assert "question" in comment, "the status field must document the question type"
+    for token in ("open", "retire"):
+        assert token in comment, f"status comment does not mention {token!r}"
+
+
+def test_question_has_a_colour_and_a_shape(evidence_config):
+    visual = evidence_config.get_visual_config()
+    assert visual["colors"].get("question") == QUESTION_COLOR
+    assert visual["node_shapes"].get("question") == QUESTION_SHAPE
+
+
+def test_question_colour_is_distinct_from_every_other_node_type(evidence_config):
+    """An open question must not read as a finding or a hypothesis on the canvas."""
+    colors = evidence_config.get_visual_config()["colors"]
+    confusable = {
+        name: round(_delta_e_76(colors["question"], colour), 2)
+        for name, colour in colors.items()
+        if name not in ("question", "default")
+        and _delta_e_76(colors["question"], colour) < MIN_PERCEPTUAL_DISTANCE
+    }
+    assert not confusable, f"question ({colors['question']}) is confusable with: {confusable}"
+
+
+def test_question_shape_is_not_reused_by_another_node_type(evidence_config):
+    shapes = evidence_config.get_visual_config()["node_shapes"]
+    clashes = [
+        name
+        for name, shape in shapes.items()
+        if name not in ("question", "default") and shape == QUESTION_SHAPE
+    ]
+    assert not clashes, f"{QUESTION_SHAPE!r} is also used by: {clashes}"
+
+
+def test_graph_manager_accepts_a_question_claim(evidence_manager, tmp_path):
+    """End to end: a question node with a blocked-by edge survives a round trip."""
+    assert evidence_manager.add_entity(
+        "primary",
+        {
+            "id": "q-gate-cadence",
+            "label": "Q: what is the true settling iteration?",
+            "type": "question",
+            "status": "open",
+            "description": "The record leaves it open: settling times are unresolved.",
+        },
+    )
+    assert evidence_manager.add_entity(
+        "primary",
+        {
+            "id": "q-prompt-library",
+            "label": "Q: is the prompt library restored?",
+            "type": "question",
+            "status": "open",
+            "description": "Named as the blocker by the record.",
+        },
+    )
+    assert evidence_manager.add_relationship(
+        "q-gate-cadence",
+        "q-prompt-library",
+        "blocked-by",
+        description="The cadence re-run needs the prompt library back first.",
+    )
+    evidence_manager.save()
+
+    reloaded = GraphManager(config_path=str(tmp_path / "config.yaml"))
+    restored = reloaded.get_entity("primary", "q-gate-cadence")
+    assert restored["type"] == "question"
+    assert restored["status"] == "open"
+    assert reloaded.validate() == []
+
+
 def test_run_types_match_contract(evidence_config):
     assert evidence_config.get_entity_type_config("contributors")["types"] == (
         EXPECTED_RUN_TYPES
@@ -409,6 +555,58 @@ def test_relationship_types_have_no_duplicates(evidence_config):
 def test_every_edge_family_is_present(evidence_config, family):
     types = set(evidence_config.get_relationship_types())
     assert set(family) <= types
+
+
+# --- The `blocks` / `blocked-by` dependency pair --------------------------
+
+
+def test_dependency_edges_are_present(evidence_config):
+    """The vocabulary must be able to say 'this blocks that', not just describe
+    it in prose where nothing can pair two claims stuck behind one artefact."""
+    types = evidence_config.get_relationship_types()
+    for edge in DEPENDENCY_EDGES:
+        assert edge in types, f"relationship vocabulary is missing {edge!r}"
+
+
+def test_dependency_edges_are_associative_not_epistemic(evidence_config):
+    """A blocker changes whether a claim can be settled yet, never whether it is
+    true - so `blocks` must not join the signed family."""
+    for edge in DEPENDENCY_EDGES:
+        assert edge not in EPISTEMIC_EDGES
+        assert edge not in STRUCTURAL_EDGES
+        assert edge in ASSOCIATIVE_EDGES
+
+
+def test_dependency_pair_was_appended_without_reordering(evidence_config):
+    """Additive: every pre-existing edge type keeps its position in the list."""
+    types = evidence_config.get_relationship_types()
+    original = EPISTEMIC_EDGES + STRUCTURAL_EDGES + ORIGINAL_ASSOCIATIVE_EDGES
+    assert types[: len(original)] == original
+    assert types[len(original):] == DEPENDENCY_EDGES
+
+
+def test_dependency_edges_are_directed_and_share_a_style(evidence_config):
+    """`blocks` and `blocked-by` are one relation read from opposite ends, so
+    they must be drawn identically - and with an arrow, since which end is
+    blocked is the whole content of the edge."""
+    styles = evidence_config.get_visual_config()["edge_styles"]
+    for edge in DEPENDENCY_EDGES:
+        assert styles[edge]["arrows"] is True, f"{edge} must be drawn with an arrow"
+        assert styles[edge]["color"] == DEPENDENCY_COLOR
+    assert styles["blocks"] == styles["blocked-by"]
+
+
+def test_dependency_edges_do_not_look_like_the_soft_associative_links(evidence_config):
+    """An unblocking is actionable; `relates-to` is not. They must not be drawn
+    the same, or the work signal disappears into the plumbing."""
+    styles = evidence_config.get_visual_config()["edge_styles"]
+    for soft in ("builds-on", "cites", "relates-to"):
+        assert styles["blocks"]["color"] != styles[soft]["color"], (
+            f"blocks is drawn in the same colour as {soft}"
+        )
+    assert styles["blocks"]["color"] == evidence_config.get_visual_config()["colors"][
+        "question"
+    ], "dependency edges should read as part of the question family"
 
 
 # --- Visualization: status_colors -----------------------------------------
@@ -674,6 +872,48 @@ def test_node_shapes_cover_every_node_type(evidence_config):
 def test_get_color_for_type_falls_back(evidence_config):
     assert evidence_config.get_color_for_type("hypothesis") == "#6B4C8A"
     assert evidence_config.get_color_for_type("no-such-type") == "#7f8c8d"
+
+
+# --- The template README documents what the schema offers -----------------
+
+
+@pytest.fixture(scope="module")
+def evidence_readme():
+    assert EVIDENCE_README.exists(), f"missing template README: {EVIDENCE_README}"
+    return EVIDENCE_README.read_text(encoding="utf-8")
+
+
+def test_readme_documents_every_claim_type(evidence_readme):
+    for claim_type in EXPECTED_CLAIM_TYPES:
+        assert f"`{claim_type}`" in evidence_readme, (
+            f"the template README never mentions the {claim_type!r} claim type"
+        )
+
+
+def test_readme_documents_every_status(evidence_readme):
+    for status in EXPECTED_STATUSES:
+        assert f"`{status}`" in evidence_readme, f"README is missing status {status!r}"
+
+
+def test_readme_documents_every_edge_type(evidence_readme):
+    for edge in EXPECTED_EDGE_TYPES:
+        assert f"`{edge}`" in evidence_readme, f"README is missing edge type {edge!r}"
+
+
+def test_readme_explains_how_a_question_is_answered(evidence_readme):
+    """The one rule that is easy to get wrong: the answer rides on an edge, not
+    on a status value."""
+    assert "retires" in evidence_readme
+    lowered = evidence_readme.lower()
+    assert "answered" in lowered
+    assert "`question`" in evidence_readme
+
+
+def test_readme_status_table_covers_the_question_type(evidence_readme):
+    """The per-type status table must exist, or the reader has no way to know
+    that `open` means something different on a concept and on a question."""
+    assert "Status by claim type" in evidence_readme
+    assert "| `question` |" in evidence_readme
 
 
 # --- Regression guard: the four pre-existing templates --------------------

@@ -12,18 +12,39 @@ be replayed.
 ## Entities
 
 ### Claims (Primary)
-Hypotheses, findings and concepts - the things that can be true, false, or not yet
-known.
+Hypotheses, findings, concepts and questions - the things that can be true, false, or
+not yet known.
 
 **Types:**
 - `hypothesis` - a claim you intend to test
 - `finding` - a claim a run has produced
 - `concept` - a construct the other claims are stated in terms of
+- `question` - something the record explicitly leaves open
+
+The four are not interchangeable, and the boundary that matters most in practice is
+`question` vs the other two active types:
+
+| Type | Asserts something? | Answer expected from | Typical status |
+|---|---|---|---|
+| `hypothesis` | Yes - a testable proposition | a run that tests it | `untested` -> `supported` / `refuted` / ... |
+| `finding` | Yes - a result already in hand | already answered | `supported`, `qualified`, `corrected` |
+| `concept` | No - it is vocabulary | nothing; it is not a question | `open` (i.e. no epistemic status) |
+| `question` | No - it *asks* | new work, named by `blocks` / `blocked-by` | `open` while it stands |
+
+A question is not a hypothesis with a question mark on it. "Does the landscape depend
+on where the loop is cut?" is a question; "the landscape does not depend on where the
+loop is cut" is a hypothesis. If you can state a verdict that would settle it, and you
+have committed to a direction, it is a hypothesis. If the record only says the matter
+is unsettled, pending, blocked or not attempted, it is a question.
+
+Only emit a question the source actually leaves open, and quote the sentence that
+leaves it open in the `description`. A question node you invented is worse than no
+question node: it makes fabricated work look like recorded work.
 
 **Fields:**
-- `id`: Unique identifier, kebab-case (e.g. `f9-divine-period-2`, `h-fingerprint`, `concept-limit-cycle`)
+- `id`: Unique identifier, kebab-case (e.g. `f9-divine-period-2`, `h-fingerprint`, `concept-limit-cycle`, `q-gate-cadence`)
 - `label`: Short display name (e.g. `F9: Divine is a period-2 limit cycle`)
-- `type`: hypothesis | finding | concept
+- `type`: hypothesis | finding | concept | question
 - `status`: Where the claim stands now (see below)
 - `description`: 1-3 sentences of plain prose
 - `phase`: Phase id from `metadata.phases` (e.g. `phase-5`)
@@ -79,6 +100,35 @@ use these exact hex values everywhere (they are also in `config.yaml` under
 | `open`          | `#6B4C8A` | Being actively worked; evidence exists but is not decisive.           |
 | `untested`      | `#9AA3A8` | Stated, never yet put to a run.                                       |
 
+### Status by claim type
+
+The eight values are shared, but each type uses a slice of them, and `open` means
+different things on either side of the `question` line:
+
+| Type | Statuses it uses | Note |
+|---|---|---|
+| `hypothesis` | `untested`, `supported`, `refuted`, `not-supported`, `qualified`, `corrected`, `retired` | Moves as evidence lands. |
+| `finding` | `supported`, `qualified`, `corrected`, `retired`, `refuted` | A finding starts life supported by its own run. |
+| `concept` | `open` (default), `corrected`, `retired`, `untested` | `open` on a concept is *no epistemic status*, not open work. |
+| `question` | `open`, `untested`, `retired` | `open` on a question is real open work. |
+
+This is the point of the `question` type. Before it existed, `open` was the default a
+concept fell into when nobody had an epistemic verdict to record, so filtering the
+graph to `status = open` returned a pile of vocabulary and no work. `type = question
+AND status = open` is the query that returns work; `open` finally means something for a
+claim that is not a concept.
+
+**A question that has been answered is not given an "answered" status.** It takes
+`retired` plus a `retired` date, and the *answer* arrives as an edge: the finding (or
+hypothesis) that settled it draws `retires` - or `supersedes`, if it replaces the
+question with a sharper one - at the question. That way the answer is a first-class
+node you can follow, and the question keeps its place on the timeline: scrub back to
+before the answer and it is open again. A status value meaning "answered" would throw
+away which result did the answering.
+
+`untested` on a question is the narrow case where a protocol exists and nobody has run
+it. If there is no protocol, the question is simply `open`.
+
 `not-supported` is the null-result slot, and it is deliberately narrow: `refuted` means
 the evidence points the other way, `qualified` means the claim survives in a narrowed or
 mixed form, and `not-supported` means neither happened - the run simply failed to back
@@ -112,6 +162,23 @@ They say *where it came from*, not *whether it is true*.
 ### Associative (soft links)
 - `analogous-to`, `breaks-down-at` - dashed `#5B7DB1`, no arrow (symmetric)
 - `builds-on`, `cites`, `relates-to` - thin solid `#B0B7BC`, arrow
+- `blocks`, `blocked-by` - dashed `#A8477A`, arrow (dependency between open work)
+
+| Edge         | Direction                  | Use for                                                       |
+|--------------|----------------------------|---------------------------------------------------------------|
+| `blocks`     | blocker -> gated thing     | "no cross-model coherence claim until a matched null exists"  |
+| `blocked-by` | gated thing -> blocker     | "the other 33 prompts remain blocked on the prompt library"   |
+
+These two are the same relation read from opposite ends. Draw **one** edge per pair,
+in whichever direction the source states it, and quote the source in the description -
+drawing both directions doubles the graph's dependency count and makes a single stated
+blocker look like two.
+
+`blocks` / `blocked-by` are deliberately associative, not epistemic: a blocker changes
+nothing about whether a claim is true, only about whether it can be settled yet. They
+are what makes a shared blocker visible - two questions pointing `blocked-by` at the
+same artefact are one unblocking away from both moving, which is invisible when the
+same sentence is merely repeated in two prose descriptions.
 
 Every relationship needs a real `description` saying **why** it holds. `weight`
 (1-10, default 3) drives edge thickness where the viewer supports it, and `asserted`
@@ -141,9 +208,13 @@ what you believe now.
 
 ## Node shapes
 
-`hypothesis` diamond, `finding` dot, `concept` hexagon, `run` square, `model`
-triangle, `null-model` triangleDown, `doc` box, `artefact` ellipse, `prior-work`
-star. Also in `config.yaml` under `visualization.node_shapes`.
+`hypothesis` diamond, `finding` dot, `concept` hexagon, `question` circle, `run`
+square, `model` triangle, `null-model` triangleDown, `doc` box, `artefact` ellipse,
+`prior-work` star. Also in `config.yaml` under `visualization.node_shapes`.
+
+`question` is a `circle` (label drawn inside) rather than a `dot` (label drawn
+alongside), so an open question does not read as another finding at a glance. Its
+type colour is `#A8477A`.
 
 ## Workflow
 
@@ -229,6 +300,48 @@ gm.update_entity('primary', 'h-fingerprint', {'status': 'qualified'})
 gm.save()
 ```
 
+### 4b. Record what the run left open
+
+A run almost always closes one thing and leaves another. Do not let that second half
+live only in a sentence inside a finding's `description`, where nothing can find it.
+
+```python
+gm.add_entity('primary', {
+    'id': 'q-other-33-prompts',
+    'label': 'Q: Do the other 33 Divine prompts share the flip axis?',
+    'type': 'question',
+    'status': 'open',
+    'description': 'FINDINGS F10 leaves this open in as many words: "Open: whether '
+                   'all 34 Divine prompts share this flip axis (blocked on the '
+                   'prompt-library restoration, issue #9)."',
+    'phase': 'phase-5',
+    'asserted': '2026-07-19',
+    'retired': None,
+    'doc_ref': 'docs/FINDINGS.md#f10-anatomy-of-the-period-2-cycle'
+})
+
+gm.add_relationship('q-other-33-prompts', 'q-prompt-library', 'blocked-by',
+    'F10 states the block in the source\'s own words: "blocked on the '
+    'prompt-library restoration, issue #9".')
+
+gm.add_relationship('q-other-33-prompts', 'f10-cycle-anatomy', 'relates-to',
+    'The question is raised by F10 and is about the axis F10 measured.')
+```
+
+Three rules keep this honest:
+
+1. The `description` carries the quote that leaves it open. If you cannot quote it,
+   the record does not leave it open and there is no node to add.
+2. `doc_ref` points at the passage the quote came from.
+3. It is wired to something: `relates-to` the claim it came out of, and
+   `blocks` / `blocked-by` whatever it gates or is gated by. A question with no
+   edges is a note, not a graph node.
+
+When the question is answered, do not edit the question's text. Add the finding, draw
+`retires` from the finding to the question, and set the question's `status` to
+`retired` with a date. The question keeps saying what was asked; the edge says what
+answered it.
+
 Note the pattern: the finding **qualifies** the hypothesis, and the hypothesis'
 `status` moves `untested -> qualified`. The edge records the event; the status records
 the current state. Both are needed - the edge alone cannot be read at a glance, and
@@ -311,7 +424,13 @@ gemini_context:
 ## Tips
 
 - Use consistent ID format: `lowercase-with-hyphens`. Prefixes help: `h-` hypothesis,
-  `f9-` numbered finding, `concept-`, `run-`, `model-`, `null-`, `doc-`, `art-`, `prior-`.
+  `f9-` numbered finding, `concept-`, `q-` question, `run-`, `model-`, `null-`, `doc-`,
+  `art-`, `prior-`.
+- Filter `type = question AND status = open` to get the work queue. Filtering on
+  `status = open` alone will hand you every concept that never got a verdict.
+- Never invent a question to fill a gap you noticed. Extract questions the way you
+  extract findings: from the text, with the sentence quoted. A graph of real answers
+  and imagined questions is worse than one with no questions in it.
 - Set `asserted` on every claim and every epistemic edge, or the timeline is dead.
 - Never delete a refuted claim - set `status: refuted` and draw the `refutes` edge.
 - Use `retires` + `retired` date for questions that dissolved; use `supersedes` when a

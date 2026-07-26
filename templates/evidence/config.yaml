@@ -16,11 +16,12 @@ entity_types:
       - hypothesis
       - finding
       - concept
+      - question
     fields:
       - name: id
         type: string
         required: true
-        comment: "kebab-case, e.g. f9-divine-period-2, h-fingerprint, concept-limit-cycle"
+        comment: "kebab-case, e.g. f9-divine-period-2, h-fingerprint, concept-limit-cycle, q-gate-cadence"
       - name: label
         type: string
         required: true
@@ -28,14 +29,26 @@ entity_types:
       - name: type
         type: enum
         required: true
+        comment: >-
+          hypothesis asserts something testable; finding is a result a run
+          produced; concept is vocabulary the other claims are stated in;
+          question is something the record explicitly leaves open.
         values:
           - hypothesis
           - finding
           - concept
+          - question
       - name: status
         type: enum
         required: true
-        comment: "Where the claim currently stands epistemically"
+        comment: >-
+          Where the claim currently stands epistemically. A `question` uses a
+          narrow slice of this vocabulary: `open` while it stands unanswered
+          (this is the only claim type for which `open` is a work signal rather
+          than a default), `untested` for a question with a protocol but no run,
+          and `retired` once it is answered or dissolved - the answer itself is
+          carried by the incoming `retires` / `supersedes` edge from whatever
+          answered it, never by a status value meaning "answered".
         values:
           - supported
           - refuted
@@ -170,6 +183,11 @@ relationships:
     - builds-on
     - cites
     - relates-to
+    # associative: dependency between open work and what it gates.
+    # `blocks` runs blocker -> gated thing; `blocked-by` is the same relation
+    # written from the gated end. Use whichever direction the source states.
+    - blocks
+    - blocked-by
 
 # File paths
 paths:
@@ -185,6 +203,7 @@ visualization:
     hypothesis: "#6B4C8A"
     finding: "#2E7D5B"
     concept: "#5B7DB1"
+    question: "#A8477A"
     run: "#B9812F"
     model: "#B3423F"
     null-model: "#8A8F94"
@@ -289,6 +308,16 @@ visualization:
       dashes: false
       width: 1
       arrows: true
+    blocks:
+      color: "#A8477A"
+      dashes: [6, 3]
+      width: 2
+      arrows: true
+    blocked-by:
+      color: "#A8477A"
+      dashes: [6, 3]
+      width: 2
+      arrows: true
     default:
       color: "#C7CDD1"
       dashes: false
@@ -300,6 +329,7 @@ visualization:
     hypothesis: diamond
     finding: dot
     concept: hexagon
+    question: circle
     run: square
     model: triangle
     null-model: triangleDown
@@ -326,18 +356,25 @@ gemini_context:
   enabled: false
   system_prompt: |
     You are an evidence assistant with access to an evidence graph.
-    The graph contains claims (hypotheses, findings, concepts), runs (experiments,
-    models, null models) and sources (docs, artefacts, prior work), joined by signed
-    epistemic edges: supports, refutes, qualifies, corrects, retires, supersedes, tests.
+    The graph contains claims (hypotheses, findings, concepts, questions), runs
+    (experiments, models, null models) and sources (docs, artefacts, prior work), joined
+    by signed epistemic edges: supports, refutes, qualifies, corrects, retires,
+    supersedes, tests.
     Every claim carries a status (supported, refuted, not-supported, qualified, retired,
     corrected, open, untested) and dates (asserted, retired) so its standing can be read
     at any point in time. "not-supported" is a null result - the evidence failed to back
     the claim without contradicting it - and is distinct from "refuted".
+    A "question" is something the record explicitly leaves open, as opposed to a
+    hypothesis (which asserts something testable) or a concept (which is vocabulary).
+    An open question has status "open"; an answered one is "retired" and the answer is
+    the claim on the other end of its incoming retires/supersedes edge.
+    "blocks" / "blocked-by" edges say which open work gates which other work.
     You help with:
     - Reporting where a claim currently stands and what changed it
     - Tracing the chain of runs and artefacts that support or refute a claim
     - Surfacing contradictions: claims with both supporting and refuting evidence
     - Finding open or untested claims that no run has yet addressed
+    - Listing the open questions, what each one gates, and what is gating it
     - Reconstructing the state of the graph as of a given date or phase
     Always cite the run ids, artefact paths, or doc_refs that back a statement, and
     never assert something the graph does not record. Say "not recorded in the graph"

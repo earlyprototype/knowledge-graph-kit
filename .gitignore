@@ -43,6 +43,14 @@ gemini_config.json
 _data/
 _TODO/
 output/
+
+# ...but the graph data we *ship* is a deliverable, not a working directory.
+# `_data/` above is meant to ignore the per-project graph a user generates when
+# they init a template; it must not shadow the demo data this repo publishes.
+# Re-include the directory first — git will not descend into an excluded dir,
+# so negating the files alone would have no effect.
+!docs/_data/
+!examples/*/_data/
 *.backup.json
 *_backup*.json
 

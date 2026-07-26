@@ -28,9 +28,12 @@ Open `http://localhost:8000/viewer.html`. The viewer loads vis-network and marke
 
 ### Lint / test
 
-There is no configured linter, formatter, or automated test suite in this repo. Manual verification:
+There is no configured linter or formatter in this repo. Verification:
 
-- `python3 examples/basic_usage.py` — exercises `GraphManager` against all four templates
+- `python3 -m pytest tests/ -q` — the test suite (config loading, `GraphManager`, template schemas)
+- `python3 examples/basic_usage.py` — exercises `GraphManager` against three of the five
+  templates (research, systems, ecosystem); note it writes a `_data/` directory into each
+  template it touches, which is gitignored but worth deleting afterwards
 - `(cd examples/systems-map-example && python3 build_map.py)` — regenerates example graph data (`build_map.py` reads `config.yaml` from the current directory)
 - Serve the example and confirm `viewer.html` and `_data/entities.json` return HTTP 200
 

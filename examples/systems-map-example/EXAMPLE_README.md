@@ -6,11 +6,11 @@ This is a **meta-example** showing how to use the Systems Mapping template to do
 
 This systems map documents the Knowledge Graph Kit codebase structure, including:
 
-### Components (16 total)
+### Components (17 total)
 - **Core Modules**: Graph Manager, Config Loader
 - **Services**: HTTP Server, Gemini API Server
 - **Tools**: Setup Wizard, Initialization Scripts
-- **Templates**: Research, Systems, Ecosystem, Generic
+- **Templates**: Research, Systems, Ecosystem, Evidence, Generic
 - **UI**: Web Viewer Interface
 - **Data Stores**: entities.json, config.yaml
 - **External Dependencies**: PyYAML, Google Gen AI, vis.js
@@ -161,7 +161,7 @@ Use this approach for:
 
 ## Key Takeaways
 
-✅ **Start Simple** - This example has 16 components. Start with 5-10 key ones.
+✅ **Start Simple** - This example has 17 components. Start with 5-10 key ones.
 
 ✅ **Iterate** - Add detail as you discover dependencies
 

@@ -1,6 +1,6 @@
 # Template Guide
 
-Four ready-to-use templates for different knowledge graph applications.
+Five ready-to-use templates for different knowledge graph applications.
 
 ---
 
@@ -11,6 +11,7 @@ Four ready-to-use templates for different knowledge graph applications.
 | **Research** | Academic research | Concepts, Researchers, Papers | Literature reviews, systematic analysis |
 | **Systems** | Software architecture | Components, Teams, Specifications | Microservices, dependencies |
 | **Ecosystem** | Stakeholder analysis | Elements, Stakeholders, Insights | Value flows, power mapping |
+| **Evidence** | Claim tracking | Claims, Runs, Sources | Experimental programmes, self-correction audits |
 | **Generic** | Custom domains | Fully customizable | Anything else |
 
 ---
@@ -109,6 +110,53 @@ Stakeholder analysis, organizational networks, value flow mapping.
 
 ---
 
+## ⚖️ Evidence Template
+
+### Purpose
+Experimental programmes and claim tracking: what was believed, what was run, what the run did to the belief.
+
+### Entities
+
+**Claims** (Primary)
+- Types: hypothesis, finding, concept
+- Statuses: supported, refuted, not-supported, qualified, retired, corrected, open, untested
+  (`not-supported` is the null result: the evidence failed to back the claim without
+  contradicting it, which is neither `refuted` nor `qualified`)
+- Fields: label, type, status, description, phase, asserted, retired, doc_ref, evidence
+
+**Runs** (Contributors)
+- Types: run, model, null-model
+- Fields: label, type, description, script, output_dir, n, date
+
+**Sources** (Sources)
+- Types: doc, artefact, prior-work
+- Fields: title, type, path, description
+
+### Key Relationships
+
+Edges are grouped by what they do, and the viewer styles each group differently:
+
+- **Epistemic** (signed — these change what you believe): `supports`, `refutes`, `qualifies`, `corrects`, `retires`, `supersedes`, `tests`
+- **Structural** (neutral plumbing): `produced-by`, `run-on`, `evidenced-by`, `documented-in`
+- **Associative** (soft links): `analogous-to`, `breaks-down-at`, `builds-on`, `cites`, `relates-to`
+
+Every relationship carries a required `description` saying *why*, and an optional `asserted` date that drives the timeline.
+
+### Use Cases
+- Hypothesis-to-finding chains with the run that settled them
+- Self-correction audits — which results corrected or retired which
+- Provenance for a published number, back to the script and output directory
+- Replaying a programme's understanding as it stood on any given date
+- Separating what still stands from what has been superseded
+
+### Viewer extras
+
+Beyond the shared viewer features, the Evidence template adds a timeline scrubber
+(with play/pause), status and type filter chips, colour-by-status vs colour-by-type,
+and a "copy evidence chain" action that renders a claim's provenance as plain text.
+
+---
+
 ## ⚙️ Generic Template
 
 ### Purpose
@@ -163,6 +211,12 @@ relationships: reports-to, collaborates-with, manages
 ✅ Understanding power structures  
 ✅ Planning interventions
 
+### Choose Evidence if:
+✅ Tracking claims that can be refuted or corrected  
+✅ Recording which experiment produced which result  
+✅ Auditing how understanding changed over time  
+✅ You need status, not just structure
+
 ### Choose Generic if:
 ✅ Custom domain not listed  
 ✅ Need flexible schema  
@@ -211,6 +265,10 @@ All templates include:
 ✅ Config-driven customization  
 ✅ Provenance tracking
 
+The Evidence template additionally ships a timeline scrubber, status/type filter chips
+and canonical status colours and edge styles (see `visualization.status_colors` and
+`visualization.edge_styles` in its `config.yaml`).
+
 ---
 
 ## Further Customization
@@ -220,6 +278,9 @@ All templates can be further customized:
 - **Add entity subtypes** in `config.yaml`
 - **Define custom relationships** in `relationships.types`
 - **Change colors** in `visualization.colors`
+- **Change status colours** in `visualization.status_colors` (Evidence)
+- **Restyle edges per type** in `visualization.edge_styles` (Evidence)
+- **Change node shapes** in `visualization.node_shapes` (Evidence)
 - **Modify node sizes** in `visualization.node_sizes`
 - **Add custom fields** in `entity_types.*.fields`
 

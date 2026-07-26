@@ -25,12 +25,14 @@ I do a lot of systems and ecosystem mapping in my design practice — stakeholde
 
 ## Features
 
-- **🎯 4 Pre-built Templates** - Research, Systems Mapping, Ecosystem Mapping, Generic
+- **🎯 5 Pre-built Templates** - Research, Systems Mapping, Ecosystem Mapping, Evidence, Generic
 - **🎨 Interactive Visualization** - Click, explore, and navigate your knowledge graph
 - **🤖 AI Integration** - Optional Gemini chat for insights and exploration
 - **📊 Provenance Tracking** - Track where each concept came from
 - **🔧 Fully Configurable** - Customize entity types, relationships, and visuals via YAML
 - **💻 Simple Setup** - Interactive wizard walks you through everything
+- **🕰️ Timeline Scrubber** - Replay a graph's history by date (Evidence template)
+- **⚖️ Epistemic Status** - Colour claims by whether they still stand (Evidence template)
 
 ---
 
@@ -95,6 +97,14 @@ Choose the template that fits your use case:
 
 **Entities:** Elements, Stakeholders, Insights  
 **Use Cases:** Ecosystem analysis, power mapping, value chain visualization
+
+### ⚖️ Evidence
+**For:** Experimental programmes, claim tracking, anything where findings get corrected
+
+**Entities:** Claims, Runs, Sources  
+**Use Cases:** Hypothesis-to-finding chains, self-correction audits, provenance of a result
+
+Claims carry an epistemic **status** (`supported`, `refuted`, `not-supported`, `qualified`, `retired`, `corrected`, `open`, `untested` — `not-supported` being the null result, distinct from a refutation) and edges carry **force** — `supports`/`refutes`/`qualifies`/`corrects`/`retires`/`supersedes`/`tests` — so the graph records not just what connects to what but what a result *did* to a prior belief. A timeline scrubber replays the programme by `asserted`/`retired` date.
 
 ### ⚙️ Generic
 **For:** Custom domains not covered above
@@ -161,6 +171,9 @@ python core/server.py --directory examples/systems-map-example
 | **Show Connections** | Focus on subgraphs |
 | **Breadcrumb Trail** | Track your exploration path |
 | **Document Panel** | View source documents inline |
+| **Timeline Scrubber** | Replay the graph by date, with play/pause (Evidence) |
+| **Status & Type Filters** | Chip rows to show/hide by status or entity type (Evidence) |
+| **Copy Evidence Chain** | Copy a claim's provenance chain as plain text (Evidence) |
 | **AI Chat** | Ask questions about your graph (optional) |
 
 </div>
@@ -265,6 +278,12 @@ pip install -r requirements.txt
 - Analyze power structures
 - Trace value flows
 - Identify collaboration opportunities
+
+### Evidence & Claim Tracking
+- Trace a finding back to the run that produced it
+- Record which results corrected, retired or superseded earlier ones
+- See at a glance which claims still stand
+- Replay how the picture changed over the life of a programme
 
 ---
 

@@ -1,0 +1,3400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evidence Graph Viewer</title>
+    <meta name="description" content="An interactive evidence graph: claims coloured by epistemic status, edges by epistemic force, with a timeline scrubber.">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            /* keeps the graph clear of the fixed timeline bar */
+            padding-bottom: 58px;
+        }
+
+        #header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 20px 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex: 0 0 auto;
+        }
+
+        #header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 500;
+            vertical-align: middle;
+        }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #search {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 280px;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .control-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #bdc3c7;
+        }
+
+        #colour-mode {
+            padding: 7px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+            color: #2c3e50;
+        }
+
+        /* ---- filter chips ---- */
+        #chip-bar {
+            background: #34495e;
+            padding: 8px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+
+        .chip-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .chip-group-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #95a5a6;
+            margin-right: 2px;
+        }
+
+        .chip {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.08);
+            color: #ecf0f1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+            opacity: 0.55;
+        }
+
+        .chip:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .chip.active {
+            opacity: 1;
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .chip .swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid rgba(0,0,0,0.25);
+        }
+
+        #container {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        #graph {
+            flex: 1;
+            background: white;
+            position: relative;
+        }
+
+        /* ---- legend ---- */
+        #legend {
+            position: absolute;
+            z-index: 5;
+            top: 12px;
+            left: 12px;
+            background: rgba(255,255,255,0.94);
+            border: 1px solid #e1e5e8;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #2c3e50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            max-width: 240px;
+            max-height: calc(100% - 120px);
+            overflow-y: auto;
+            z-index: 5;
+        }
+
+        #legend h4 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #7f8c8d;
+            margin-bottom: 6px;
+        }
+
+        #legend .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        #legend .legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex: 0 0 auto;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+
+        #legend .legend-line {
+            width: 22px;
+            height: 0;
+            flex: 0 0 auto;
+            border-top-width: 3px;
+            border-top-style: solid;
+        }
+
+        #legend .legend-section {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        #legend .legend-note {
+            color: #7f8c8d;
+            font-size: 11px;
+            line-height: 1.4;
+            margin-top: 6px;
+        }
+
+        /* ---- details panel ---- */
+        #details-panel {
+            width: 380px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        #details-panel.hidden {
+            transform: translateX(100%);
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #details-panel h2 {
+            font-size: 19px;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            line-height: 1.35;
+        }
+
+        #details-panel .field {
+            margin-bottom: 14px;
+        }
+
+        #details-panel .field-label {
+            font-weight: 600;
+            color: #7f8c8d;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        #details-panel .field-value {
+            color: #2c3e50;
+            font-size: 14px;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        #details-panel .node-link {
+            color: #3498db;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #details-panel .node-link:hover {
+            color: #2980b9;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 11px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .type-pill {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 4px;
+            background: #ecf0f1;
+            color: #566573;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .rel-group {
+            margin-bottom: 10px;
+        }
+
+        .rel-group-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #95a5a6;
+            margin: 10px 0 6px;
+        }
+
+        .rel-item {
+            border-left: 3px solid #e1e5e8;
+            padding: 4px 0 4px 9px;
+            margin-bottom: 7px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .rel-type {
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .rel-desc {
+            color: #7f8c8d;
+            font-size: 12px;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .action-button {
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .action-button.secondary {
+            background: #566573;
+        }
+
+        .action-button.secondary:hover {
+            background: #46545e;
+        }
+
+        .action-button.chain {
+            background: #27ae60;
+        }
+
+        .action-button.chain:hover {
+            background: #229954;
+        }
+
+        /* ---- breadcrumb ---- */
+        #breadcrumb {
+            flex: 0 0 auto;
+            padding: 8px 20px;
+            background: #ecf0f1;
+            font-size: 13px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        #breadcrumb .breadcrumb-item {
+            color: #3498db;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        #breadcrumb .breadcrumb-item:hover {
+            color: #2980b9;
+        }
+
+        #breadcrumb .breadcrumb-separator {
+            color: #95a5a6;
+        }
+
+        /* ---- timeline ---- */
+        #timeline-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 58px;
+            background: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 0 20px;
+            z-index: 400;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
+        }
+
+        #timeline-bar.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        #timeline {
+            flex: 1;
+            min-width: 120px;
+            accent-color: #27ae60;
+            cursor: pointer;
+        }
+
+        #timeline-play {
+            background: #27ae60;
+            min-width: 74px;
+        }
+
+        #timeline-play:hover {
+            background: #229954;
+        }
+
+        #timeline-readout {
+            font-size: 13px;
+            min-width: 240px;
+            line-height: 1.35;
+        }
+
+        #timeline-date {
+            font-weight: 700;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        #timeline-phase {
+            display: block;
+            font-size: 11px;
+            color: #bdc3c7;
+        }
+
+        #timeline-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #95a5a6;
+        }
+
+        /* ---- overlays ---- */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.94);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 76px;
+            left: 50%;
+            transform: translateX(-50%) translateY(12px);
+            background: #2c3e50;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 9000;
+            max-width: 70vw;
+        }
+
+        #toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ---- markdown panel ---- */
+        #markdown-panel {
+            position: fixed;
+            top: 0;
+            left: -640px;
+            width: 640px;
+            max-width: 96vw;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.2);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #markdown-panel.visible {
+            left: 0;
+        }
+
+        #markdown-header {
+            padding: 16px 20px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #markdown-title {
+            font-size: 15px;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        #markdown-close {
+            background: transparent;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            flex: 0 0 auto;
+        }
+
+        #markdown-close:hover {
+            background: rgba(255,255,255,0.12);
+        }
+
+        #markdown-tabs {
+            display: flex;
+            gap: 5px;
+            padding: 0 20px;
+            background: #34495e;
+            overflow-x: auto;
+        }
+
+        .markdown-tab {
+            padding: 10px 15px;
+            background: transparent;
+            color: #ecf0f1;
+            border: none;
+            cursor: pointer;
+            border-radius: 0;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+
+        .markdown-tab:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .markdown-tab.active {
+            background: white;
+            color: #2c3e50;
+        }
+
+        #markdown-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 26px 30px;
+            line-height: 1.75;
+        }
+
+        #markdown-content h1 { font-size: 26px; margin-bottom: 18px; color: #2c3e50; }
+        #markdown-content h2 { font-size: 21px; margin: 28px 0 14px; color: #34495e; }
+        #markdown-content h3 { font-size: 17px; margin: 22px 0 10px; color: #34495e; }
+        #markdown-content p { margin-bottom: 14px; color: #555; }
+        #markdown-content code {
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        #markdown-content pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        #markdown-content pre code { background: none; color: inherit; padding: 0; }
+        #markdown-content ul, #markdown-content ol { margin-left: 25px; margin-bottom: 15px; }
+        #markdown-content li { margin-bottom: 6px; }
+        #markdown-content blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 18px;
+            margin: 18px 0;
+            color: #666;
+            font-style: italic;
+        }
+        #markdown-content table { border-collapse: collapse; margin: 15px 0; width: 100%; }
+        #markdown-content th, #markdown-content td {
+            border: 1px solid #e1e5e8;
+            padding: 6px 10px;
+            font-size: 13px;
+            text-align: left;
+        }
+        #markdown-content .md-anchor-hit {
+            background: #fff6d6;
+            box-shadow: -6px 0 0 #f1c40f;
+        }
+
+        /* ---- chat panel ---- */
+        #chat-button {
+            background: #27ae60;
+        }
+
+        #chat-button:hover {
+            background: #229954;
+        }
+
+        #chat-panel {
+            position: fixed;
+            top: 0;
+            right: -460px;
+            width: 460px;
+            max-width: 96vw;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 20px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-panel.visible {
+            right: 0;
+        }
+
+        #chat-header {
+            padding: 18px 20px;
+            background: #27ae60;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #chat-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-header h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        #chat-close {
+            background: transparent;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        #chat-context-indicator {
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #chat-context-indicator.visible {
+            display: block;
+        }
+
+        #chat-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-control-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .chat-control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message-header {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .chat-message-content {
+            padding: 12px 15px;
+            border-radius: 8px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .chat-message.user .chat-message-content {
+            background: #3498db;
+            color: white;
+            align-self: flex-end;
+            max-width: 85%;
+        }
+
+        .chat-message.assistant .chat-message-content {
+            background: white;
+            color: #2c3e50;
+            border: 1px solid #e0e0e0;
+            align-self: flex-start;
+            max-width: 92%;
+        }
+
+        .chat-message.assistant .chat-message-content p { margin: 0 0 10px 0; }
+        .chat-message.assistant .chat-message-content p:last-child { margin-bottom: 0; }
+        .chat-message.assistant .chat-message-content a {
+            color: #2980b9;
+            text-decoration: underline;
+            word-break: break-word;
+        }
+        .chat-message.assistant .chat-message-content code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .chat-message.assistant .chat-message-content ul,
+        .chat-message.assistant .chat-message-content ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .chat-message.assistant .chat-message-content li { margin-bottom: 5px; }
+
+        .chat-loading {
+            display: none;
+            padding: 12px 15px;
+            margin: 0 20px 10px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .chat-loading.visible {
+            display: block;
+        }
+
+        .chat-loading::after {
+            content: '...';
+            animation: chat-loading-dots 1.5s infinite;
+        }
+
+        @keyframes chat-loading-dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        #chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        #chat-input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+        }
+
+        #chat-input:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+
+        #chat-send {
+            padding: 10px 20px;
+            background: #27ae60;
+        }
+
+        #chat-send:hover {
+            background: #229954;
+        }
+
+        #chat-send:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .chat-error {
+            padding: 12px 15px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        /* ---- mobile disclosure scaffolding --------------------------------
+           #secondary-controls and #filters-panel are wrappers added purely so
+           the narrow layout has something to turn into an overlay. At >=769px
+           they are `display: contents`, so their children stay direct flex
+           items of #controls / #chip-bar and the desktop layout is byte-for-byte
+           what it was before the wrappers existed. #mobile-toolbar and
+           #details-close never render on desktop at all. */
+        #secondary-controls,
+        #filters-panel {
+            display: contents;
+        }
+
+        #mobile-toolbar,
+        #details-close {
+            display: none;
+        }
+
+        .mobile-toggle:focus-visible,
+        #details-close:focus-visible,
+        .chip:focus-visible,
+        button:focus-visible,
+        select:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #f1c40f;
+            outline-offset: 2px;
+        }
+
+        /* =====================================================================
+           Narrow screens (phones). Everything below this line is scoped to
+           max-width 768px; the desktop layout above is untouched.
+           ===================================================================== */
+        @media (max-width: 768px) {
+            body {
+                /* matches the compacted #timeline-bar height below */
+                padding-bottom: 52px;
+            }
+
+            /* ---- compact header: title + search + three disclosures ---- */
+            #header {
+                padding: 8px 12px;
+                position: relative;
+                z-index: 70;
+            }
+
+            #header h1 {
+                font-size: 15px;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+            }
+
+            #graph-title {
+                display: block;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .status-badge {
+                margin-left: 0;
+                flex: 0 0 auto;
+                font-size: 10px;
+                padding: 3px 8px;
+            }
+
+            #controls {
+                position: relative;
+                flex-direction: column;
+                align-items: stretch;
+                flex-wrap: nowrap;
+                gap: 8px;
+            }
+
+            #search {
+                width: 100%;
+                min-height: 40px;
+                /* 16px keeps mobile Safari/Chrome from zooming on focus */
+                font-size: 16px;
+            }
+
+            #mobile-toolbar {
+                display: flex;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .mobile-toggle {
+                min-height: 40px;
+                min-width: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 8px 10px;
+                font-size: 13px;
+                background: #3d566e;
+            }
+
+            .mobile-toggle:hover {
+                background: #46617c;
+            }
+
+            #filters-toggle { flex: 1 1 auto; }
+            #legend-toggle { flex: 0 0 auto; }
+
+            #more-toggle {
+                flex: 0 0 44px;
+                font-size: 20px;
+                line-height: 1;
+                padding: 8px 0;
+            }
+
+            /* open state reads as an outline so it can coexist with the
+               "filters are narrowing the view" amber below */
+            .mobile-toggle[aria-expanded="true"] {
+                box-shadow: inset 0 0 0 2px #ecf0f1;
+            }
+
+            .mobile-toggle.narrowed {
+                background: #B9812F;
+                color: #fff;
+            }
+
+            .mobile-toggle.narrowed:hover {
+                background: #a5732a;
+            }
+
+            /* ---- overflow menu: the secondary actions ---- */
+            #secondary-controls {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                width: 232px;
+                max-width: calc(100vw - 24px);
+                padding: 10px;
+                background: #34495e;
+                border: 1px solid rgba(255,255,255,0.18);
+                border-radius: 8px;
+                box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+                z-index: 80;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-6px);
+                transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+            }
+
+            body.kg-more-open #secondary-controls {
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+            }
+
+            #secondary-controls button,
+            #secondary-controls select {
+                width: 100%;
+                min-height: 40px;
+                font-size: 14px;
+            }
+
+            /* ---- filters overlay ---- */
+            /* #chip-bar keeps its place in the flow but takes no height; its
+               absolutely positioned child overlays the graph instead of pushing
+               it down. */
+            #chip-bar {
+                display: block;
+                height: 0;
+                padding: 0;
+                overflow: visible;
+                position: relative;
+                z-index: 60;
+            }
+
+            #filters-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                max-height: 60vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 12px;
+                background: #34495e;
+                border-bottom: 1px solid rgba(255,255,255,0.15);
+                box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-8px);
+                transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+            }
+
+            body.kg-filters-open #filters-panel {
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+            }
+
+            .chip-group {
+                gap: 8px;
+            }
+
+            .chip-group-label {
+                width: 100%;
+                margin-right: 0;
+            }
+
+            .chip {
+                min-height: 40px;
+                min-width: 44px;
+                padding: 8px 12px;
+                border-radius: 20px;
+                font-size: 13px;
+                justify-content: center;
+            }
+
+            /* ---- breadcrumb: only when it holds a real path ---- */
+            #breadcrumb {
+                padding: 0 12px;
+                font-size: 12px;
+            }
+
+            #breadcrumb.is-empty {
+                display: none;
+            }
+
+            /* The crumbs are the back-navigation affordance; at desktop font
+               metrics they are ~14px tall, which is not tappable. The bar's
+               vertical padding is traded for the crumb's own min-height so the
+               bar still costs 40px in total. */
+            #breadcrumb .breadcrumb-item {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 40px;
+                min-width: 40px;
+                padding: 0 2px;
+            }
+
+            /* ---- legend: overlay, closed by default ---- */
+            #legend {
+                display: none;
+                top: 8px;
+                left: 8px;
+                right: 8px;
+                max-width: none;
+                max-height: 55vh;
+                z-index: 55;
+            }
+
+            body.kg-legend-open #legend {
+                display: block;
+            }
+
+            /* ---- details: bottom sheet with its own scroll ---- */
+            #details-panel {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 52px;
+                width: auto;
+                max-height: 62vh;
+                display: flex;
+                flex-direction: column;
+                padding: 0;
+                overflow: hidden;
+                border-radius: 14px 14px 0 0;
+                box-shadow: 0 -6px 20px rgba(0,0,0,0.28);
+                z-index: 300;
+                transform: translateY(0);
+                visibility: visible;
+                transition: transform 0.3s, visibility 0.3s;
+            }
+
+            #details-panel.hidden {
+                width: auto;
+                padding: 0;
+                overflow: hidden;
+                transform: translateY(110%);
+                visibility: hidden;
+                pointer-events: none;
+            }
+
+            #details-close {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                order: -1;
+                align-self: flex-end;
+                flex: 0 0 auto;
+                width: 44px;
+                height: 44px;
+                margin: 4px 4px 0;
+                padding: 0;
+                background: transparent;
+                color: #7f8c8d;
+                font-size: 26px;
+                line-height: 1;
+            }
+
+            #details-close:hover {
+                background: #ecf0f1;
+            }
+
+            #details-panel h2 {
+                flex: 0 0 auto;
+                padding: 0 16px 8px;
+                font-size: 17px;
+            }
+
+            #detail-content {
+                flex: 1 1 auto;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 0 16px 16px;
+            }
+
+            /* Inline links to other nodes / documents inside the sheet. Without
+               this they inherit the body line box (14-16px tall) and are not
+               reliably tappable; min-width covers single-token labels. */
+            #details-panel .node-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 40px;
+                min-width: 40px;
+            }
+
+            .action-button {
+                min-height: 44px;
+            }
+
+            /* ---- timeline: compacted, never removed ---- */
+            #timeline-bar {
+                height: 52px;
+                gap: 8px;
+                padding: 0 10px;
+            }
+
+            #timeline-label {
+                display: none;
+            }
+
+            #timeline-play {
+                min-width: 58px;
+                min-height: 40px;
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+
+            #timeline {
+                height: 40px;
+                min-width: 60px;
+            }
+
+            #timeline-readout {
+                flex: 0 1 auto;
+                min-width: 0;
+                max-width: 122px;
+                font-size: 11px;
+                text-align: right;
+                overflow: hidden;
+            }
+
+            #timeline-date {
+                font-size: 12px;
+            }
+
+            #timeline-phase {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #toast {
+                bottom: 66px;
+                max-width: 86vw;
+            }
+
+            /* ---- side panels: touch-sized controls ---- */
+            #markdown-close,
+            #chat-close {
+                width: 44px;
+                height: 44px;
+                font-size: 26px;
+            }
+
+            .markdown-tab,
+            .chat-control-btn {
+                min-height: 40px;
+            }
+
+            #chat-input,
+            #chat-send {
+                min-height: 44px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #filters-panel,
+            #secondary-controls,
+            #details-panel,
+            #markdown-panel,
+            #chat-panel,
+            #toast {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        Loading evidence graph...
+    </div>
+
+    <div id="header">
+        <h1><span id="graph-title">Evidence Graph</span> <span id="live-badge" class="status-badge">LIVE</span></h1>
+        <div id="controls">
+            <input type="text" id="search" placeholder="Search claims, descriptions, ids...">
+            <div id="secondary-controls">
+                <span class="control-label">Colour by</span>
+                <select id="colour-mode" onchange="setColourMode(this.value)">
+                    <option value="status">Status</option>
+                    <option value="type">Type</option>
+                </select>
+                <button id="btn-show-all" onclick="filterNodes('all')">Show All</button>
+                <button id="btn-reset" onclick="resetView()">Reset View</button>
+                <button id="btn-reload" onclick="reloadData()">Refresh Data</button>
+                <button id="chat-button" onclick="toggleChatPanel()">Chat with AI</button>
+            </div>
+            <div id="mobile-toolbar">
+                <button type="button" id="filters-toggle" class="mobile-toggle"
+                        aria-expanded="false" aria-controls="filters-panel"
+                        onclick="toggleMobilePanel('filters')">Filters<span id="filters-count"></span></button>
+                <button type="button" id="legend-toggle" class="mobile-toggle"
+                        aria-expanded="false" aria-controls="legend"
+                        onclick="toggleMobilePanel('legend')">Legend</button>
+                <button type="button" id="more-toggle" class="mobile-toggle"
+                        aria-expanded="false" aria-controls="secondary-controls"
+                        aria-label="More controls" title="More controls"
+                        onclick="toggleMobilePanel('more')">&#8942;</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chip-bar">
+        <div id="filters-panel">
+            <div class="chip-group" id="status-chips">
+                <span class="chip-group-label">Status</span>
+            </div>
+            <div class="chip-group" id="type-chips">
+                <span class="chip-group-label">Type</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="breadcrumb">
+        <span id="breadcrumb-path">Click a node to start exploring</span>
+    </div>
+
+    <div id="container">
+        <div id="graph">
+            <div id="legend"></div>
+        </div>
+        <div id="details-panel" class="hidden">
+            <button type="button" id="details-close" aria-label="Close details"
+                    title="Close details" onclick="closeDetailsPanel()">&times;</button>
+            <h2 id="detail-title">Select a node</h2>
+            <div id="detail-content"></div>
+        </div>
+    </div>
+
+    <div id="timeline-bar">
+        <span id="timeline-label">Timeline</span>
+        <button id="timeline-play" onclick="toggleTimelinePlay()">Play</button>
+        <input type="range" id="timeline" min="0" max="0" step="1" value="0" oninput="onTimelineInput(this.value)">
+        <div id="timeline-readout">
+            <span id="timeline-date">--</span>
+            <span id="timeline-phase">no dated entities</span>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="markdown-panel">
+        <div id="markdown-header">
+            <span id="markdown-title"></span>
+            <button id="markdown-close" onclick="closeMarkdownPanel()">&times;</button>
+        </div>
+        <div id="markdown-tabs"></div>
+        <div id="markdown-content"></div>
+    </div>
+
+    <div id="chat-panel">
+        <div id="chat-header">
+            <div id="chat-header-top">
+                <h3>Evidence Assistant</h3>
+                <button id="chat-close" onclick="closeChatPanel()">&times;</button>
+            </div>
+            <div id="chat-context-indicator"></div>
+            <div id="chat-controls">
+                <button class="chat-control-btn" id="chat-new-thread" onclick="startNewThread()">New Thread</button>
+            </div>
+        </div>
+        <div id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-message-header">Assistant</div>
+                <div class="chat-message-content">
+                    <p>Hello — I can help you read this evidence graph: which claims still stand, which were refuted, and what produced the evidence.</p>
+                    <p>Click a claim to give me context, then ask away.</p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-loading">Thinking</div>
+        <div id="chat-input-area">
+            <form id="chat-input-form" onsubmit="sendChatMessage(event)">
+                <textarea id="chat-input" placeholder="Ask about a claim, a run, or a chain of evidence..." rows="1"></textarea>
+                <button id="chat-send" type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // =====================================================================
+        // Canonical defaults. loadVisualConfig() overlays _data/visual_config.json
+        // (exported from config.yaml's `visualization:` block) on top of these.
+        // =====================================================================
+
+        // Claim colour comes from status when colourMode === 'status'.
+        const STATUS_COLORS = {
+            "supported": "#2E7D5B",
+            "refuted": "#B3423F",
+            "not-supported": "#8F5A57",
+            "qualified": "#B9812F",
+            "retired": "#8A8F94",
+            "corrected": "#5B7DB1",
+            "open": "#6B4C8A",
+            "untested": "#9AA3A8",
+            "default": "#7f8c8d"
+        };
+
+        // Human-readable legend/chip text for a status token. Anything not listed
+        // here - including a status this viewer has never heard of - falls back to
+        // titleCase() rather than being dropped.
+        const STATUS_LABELS = {
+            "supported": "Supported",
+            "refuted": "Refuted",
+            "not-supported": "Not supported",
+            "qualified": "Qualified",
+            "retired": "Retired",
+            "corrected": "Corrected",
+            "open": "Open",
+            "untested": "Untested"
+        };
+
+        // Fallback colouring when colourMode === 'type' (and for runs/sources,
+        // which carry no epistemic status of their own).
+        const TYPE_COLORS = {
+            "hypothesis": "#6B4C8A",
+            "finding": "#2E7D5B",
+            "concept": "#5B7DB1",
+            "run": "#B9812F",
+            "model": "#1F7A8C",
+            "null-model": "#8A8F94",
+            "doc": "#7F8C8D",
+            "artefact": "#C77F3F",
+            "prior-work": "#9B7BB8",
+            "default": "#7f8c8d"
+        };
+
+        // Shape always encodes node type, in both colour modes.
+        const NODE_SHAPES = {
+            "hypothesis": "diamond",
+            "finding": "dot",
+            "concept": "hexagon",
+            "run": "square",
+            "model": "triangle",
+            "null-model": "triangleDown",
+            "doc": "box",
+            "artefact": "ellipse",
+            "prior-work": "star",
+            "default": "dot"
+        };
+
+        const NODE_SIZES = {
+            claim: 20,
+            run: 16,
+            source: 14
+        };
+
+        // Edge styling by epistemic type. `width` is the fallback used when the
+        // relationship carries no numeric `weight`.
+        const EDGE_STYLES = {
+            "supports":       { color: "#2E7D5B", dashes: false,  arrows: "to", width: 3 },
+            "refutes":        { color: "#B3423F", dashes: [10, 6], arrows: "to", width: 4 },
+            "qualifies":      { color: "#B9812F", dashes: [8, 6],  arrows: "to", width: 3 },
+            "corrects":       { color: "#5B7DB1", dashes: [2, 4],  arrows: "to", width: 3 },
+            "retires":        { color: "#8A8F94", dashes: [2, 4],  arrows: "to", width: 3 },
+            "supersedes":     { color: "#5B7DB1", dashes: [2, 4],  arrows: "to", width: 3 },
+            "tests":          { color: "#6B4C8A", dashes: false,  arrows: "to", width: 3 },
+            "produced-by":    { color: "#C7CDD1", dashes: false,  arrows: "to", width: 1 },
+            "run-on":         { color: "#C7CDD1", dashes: false,  arrows: "to", width: 1 },
+            "evidenced-by":   { color: "#C7CDD1", dashes: false,  arrows: "to", width: 1 },
+            "documented-in":  { color: "#C7CDD1", dashes: false,  arrows: "to", width: 1 },
+            "analogous-to":   { color: "#5B7DB1", dashes: [6, 6],  arrows: "",   width: 2 },
+            "breaks-down-at": { color: "#5B7DB1", dashes: [6, 6],  arrows: "",   width: 2 },
+            "builds-on":      { color: "#B0B7BC", dashes: false,  arrows: "to", width: 1 },
+            "cites":          { color: "#B0B7BC", dashes: false,  arrows: "to", width: 1 },
+            "relates-to":     { color: "#B0B7BC", dashes: false,  arrows: "to", width: 1 },
+            "default":        { color: "#B0B7BC", dashes: false,  arrows: "to", width: 2 }
+        };
+
+        const PHYSICS_CONFIG = {
+            enabled: false,
+            gravitationalConstant: -12000,
+            centralGravity: 0.3,
+            springLength: 170,
+            springConstant: 0.04,
+            damping: 0.09
+        };
+
+        // Severity gradient. STATUS_ORDER only fixes the *order* of the statuses it
+        // knows about - it is never used to decide whether a status is allowed.
+        // Statuses found in the data but absent here are appended, not discarded.
+        const STATUS_ORDER = ['supported', 'refuted', 'not-supported', 'qualified', 'retired', 'corrected', 'open', 'untested'];
+        const TYPE_ORDER = ['hypothesis', 'finding', 'concept', 'run', 'model', 'null-model', 'doc', 'artefact', 'prior-work'];
+
+        const EPISTEMIC_TYPES = ['supports', 'refutes', 'qualifies', 'corrects', 'retires', 'supersedes', 'tests'];
+        const STRUCTURAL_TYPES = ['produced-by', 'run-on', 'evidenced-by', 'documented-in'];
+        const ASSOCIATIVE_TYPES = ['analogous-to', 'breaks-down-at', 'builds-on', 'cites', 'relates-to'];
+        // Edge types the evidence-chain walker will follow.
+        const CHAIN_TYPES = EPISTEMIC_TYPES.concat(STRUCTURAL_TYPES);
+
+        const RETIRED_COLOR = '#8A8F94';
+        const RETIRED_OPACITY = 0.35;
+        const DAY_MS = 86400000;
+        const PLAY_DURATION_MS = 12000;
+
+        // ---- global state -------------------------------------------------
+        let network = null;
+        let nodesDataSet = null;
+        let edgesDataSet = null;
+        let allNodes = [];
+        let allEdges = [];
+        let nodeIndex = {};        // id -> base node record
+        let adjacency = {};        // id -> [{other, type, dir, description, asserted}]
+        let entitiesData = null;
+        let phases = [];
+        let navigationHistory = [];
+
+        let colourMode = 'status';
+        let activeStatuses = {};   // status -> bool
+        let activeTypes = {};      // node type -> bool
+        let searchTerm = '';
+        let focusedNodeIds = null; // non-null while "Show Connections" is active
+
+        let timelineMin = null;    // ms
+        let timelineMax = null;    // ms
+        let timelineDays = 0;
+        let timelineValue = 0;     // day index
+        let timelinePlaying = false;
+        let timelineRaf = null;
+        let timelinePlayStart = 0;
+
+        let currentNodeId = null;
+        let toastTimer = null;
+
+        // Set by a specialised render mode to override vis layout/physics.
+        // null = the default force-directed evidence layout.
+        let layoutOverride = null;
+        // Signature of the layout the live network was built with. vis cannot
+        // reliably switch layout families via setOptions, so a change here
+        // forces a clean rebuild rather than a setData().
+        let networkLayoutSignature = null;
+
+        // ---- small helpers -------------------------------------------------
+        function esc(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Escape a value for safe embedding inside a single-quoted JS string
+        // that itself lives inside a double-quoted HTML attribute.
+        function jsAttr(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '\\u003C')
+                .replace(/\r?\n/g, ' ');
+        }
+
+        function clamp(n, lo, hi) {
+            return Math.max(lo, Math.min(hi, n));
+        }
+
+        function shade(hex, amount) {
+            const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+            if (!m) return hex;
+            const num = parseInt(m[1], 16);
+            let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+            r = clamp(Math.round(r + 255 * amount), 0, 255);
+            g = clamp(Math.round(g + 255 * amount), 0, 255);
+            b = clamp(Math.round(b + 255 * amount), 0, 255);
+            return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        // Parse "YYYY-MM-DD" (or any ISO prefix of it) into UTC milliseconds.
+        function parseDate(value) {
+            if (!value || typeof value !== 'string') return null;
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+            if (!m) return null;
+            const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            return isNaN(t) ? null : t;
+        }
+
+        function formatDate(ms) {
+            if (ms === null || ms === undefined || isNaN(ms)) return '--';
+            const d = new Date(ms);
+            const pad = function (n) { return (n < 10 ? '0' : '') + n; };
+            return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+        }
+
+        function titleCase(text) {
+            return String(text || '').replace(/[-_]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        }
+
+        function ownProp(obj, key) {
+            return obj !== null && obj !== undefined &&
+                Object.prototype.hasOwnProperty.call(obj, key);
+        }
+
+        // Unknown statuses are a supported case, not an error: they take the
+        // neutral default fill and stay visible/filterable in the UI. Inherited
+        // Object.prototype keys ('constructor', 'toString', ...) must not be
+        // mistaken for a palette entry, hence ownProp().
+        function statusColour(status) {
+            return ownProp(STATUS_COLORS, status) ? STATUS_COLORS[status] : STATUS_COLORS.default;
+        }
+
+        function statusLabel(status) {
+            return ownProp(STATUS_LABELS, status) ? STATUS_LABELS[status] : titleCase(status);
+        }
+
+        function typeColour(type) {
+            return TYPE_COLORS[type] || TYPE_COLORS.default;
+        }
+
+        function edgeStyleFor(type) {
+            return EDGE_STYLES[type] || EDGE_STYLES.default;
+        }
+
+        // vis-network wants `arrows` as a string ('to' / 'from' / 'to;from') or
+        // ''. Exported configs express the same thing several ways - `arrows:
+        // true` (config.yaml), `arrow: true` (build_evidence_graph.py), or the
+        // string form. Normalise all of them; anything else would trip vis's
+        // option validator and log a console error.
+        function normalizeArrows(style) {
+            if (!style || typeof style !== 'object') return 'to';
+            let raw = style.arrows;
+            if (raw === undefined || raw === null) raw = style.arrow;
+            if (raw === undefined || raw === null) return 'to';
+            if (raw === true) return 'to';
+            if (raw === false) return '';
+            if (typeof raw === 'string') return raw.trim();
+            if (typeof raw === 'object') return raw;   // vis also accepts an object form
+            return 'to';
+        }
+
+        // vis rejects `dashes: 0`/`null` mixtures; only false or an array/true
+        // are valid.
+        function normalizeDashes(style) {
+            const raw = style ? style.dashes : false;
+            if (Array.isArray(raw)) return raw.length ? raw : false;
+            return raw === true ? true : false;
+        }
+
+        // Only forward numeric physics keys that are actually numbers, so a
+        // config that describes physics a different way (e.g. a
+        // forceAtlas2Based block) cannot hand vis `undefined` and trigger
+        // "Invalid type received" console errors.
+        function numericSubset(source, keys) {
+            const out = {};
+            if (!source || typeof source !== 'object') return out;
+            keys.forEach(function (key) {
+                const v = source[key];
+                if (typeof v === 'number' && isFinite(v)) out[key] = v;
+            });
+            return out;
+        }
+
+        // Build a vis `physics` options object from whatever shape
+        // visual_config.json used.
+        function buildPhysicsOptions() {
+            const cfg = PHYSICS_CONFIG || {};
+            const solverKeys = ['gravitationalConstant', 'centralGravity', 'springLength',
+                                'springConstant', 'damping', 'avoidOverlap'];
+            const solver = (typeof cfg.solver === 'string' && cfg.solver) ? cfg.solver : 'barnesHut';
+
+            const options = { enabled: cfg.enabled !== false };
+
+            options.stabilization = (cfg.stabilization && typeof cfg.stabilization === 'object')
+                ? Object.assign({ enabled: true, iterations: 200, updateInterval: 25, fit: true }, cfg.stabilization)
+                : { enabled: true, iterations: 200, updateInterval: 25, fit: true };
+
+            if (solver !== 'barnesHut') options.solver = solver;
+
+            // Flat legacy keys (barnesHut-style) live at the top level of the
+            // config; newer configs nest them under the solver name.
+            const flat = numericSubset(cfg, solverKeys);
+            const nested = numericSubset(cfg[solver], solverKeys);
+            const merged = Object.assign({}, flat, nested);
+            if (Object.keys(merged).length) options[solver] = merged;
+
+            ['minVelocity', 'maxVelocity', 'timestep'].forEach(function (key) {
+                if (typeof cfg[key] === 'number' && isFinite(cfg[key])) options[key] = cfg[key];
+            });
+
+            return options;
+        }
+
+        function edgeKind(type) {
+            if (EPISTEMIC_TYPES.indexOf(type) !== -1) return 'epistemic';
+            if (STRUCTURAL_TYPES.indexOf(type) !== -1) return 'structural';
+            if (ASSOCIATIVE_TYPES.indexOf(type) !== -1) return 'associative';
+            return 'other';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.add('visible');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toast.classList.remove('visible');
+            }, 2600);
+        }
+
+        // =====================================================================
+        // Mobile disclosure
+        //
+        // Narrow screens hide the two chip rows and the secondary actions
+        // behind toggles so the graph gets the screen. Everything here is inert
+        // at >=769px: the panels are `display: contents` there, so opening or
+        // closing them has no visual effect, and the toggle buttons themselves
+        // never render. All DOM access is defensive so the script still
+        // evaluates head-first outside a browser (the test harness does this).
+        // =====================================================================
+        const MOBILE_QUERY = '(max-width: 768px)';
+
+        const MOBILE_PANELS = {
+            filters: { button: 'filters-toggle', cls: 'kg-filters-open' },
+            legend:  { button: 'legend-toggle',  cls: 'kg-legend-open' },
+            more:    { button: 'more-toggle',    cls: 'kg-more-open' }
+        };
+
+        function isMobileLayout() {
+            return !!(typeof window !== 'undefined' && window.matchMedia &&
+                window.matchMedia(MOBILE_QUERY).matches);
+        }
+
+        function isMobilePanelOpen(name) {
+            const spec = MOBILE_PANELS[name];
+            const body = document.body;
+            return !!(spec && body && body.classList && body.classList.contains(spec.cls));
+        }
+
+        function setMobilePanel(name, open) {
+            const spec = MOBILE_PANELS[name];
+            if (!spec) return;
+            const body = document.body;
+            if (body && body.classList) body.classList.toggle(spec.cls, !!open);
+            const btn = document.getElementById(spec.button);
+            if (btn && typeof btn.setAttribute === 'function') {
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+        }
+
+        // Only one overlay at a time - they all cover the same graph.
+        function toggleMobilePanel(name) {
+            const open = !isMobilePanelOpen(name);
+            Object.keys(MOBILE_PANELS).forEach(function (key) {
+                setMobilePanel(key, key === name && open);
+            });
+        }
+
+        function closeMobilePanels() {
+            Object.keys(MOBILE_PANELS).forEach(function (key) {
+                setMobilePanel(key, false);
+            });
+        }
+
+        // The Filters button carries its own status line: with the panel shut a
+        // user must still be able to see that the view is being narrowed, or
+        // missing nodes look like missing data.
+        function updateFilterSummary() {
+            const statuses = Object.keys(activeStatuses || {});
+            const types = Object.keys(activeTypes || {});
+            const total = statuses.length + types.length;
+            let on = 0;
+            statuses.forEach(function (s) { if (activeStatuses[s] !== false) on++; });
+            types.forEach(function (t) { if (activeTypes[t] !== false) on++; });
+            const narrowed = total > 0 && on < total;
+
+            const count = document.getElementById('filters-count');
+            if (count) count.textContent = narrowed ? ' (' + on + ' of ' + total + ')' : '';
+
+            const btn = document.getElementById('filters-toggle');
+            if (btn && btn.classList) btn.classList.toggle('narrowed', narrowed);
+        }
+
+        // =====================================================================
+        // Data loading
+        // =====================================================================
+        async function loadEntities() {
+            try {
+                const response = await fetch('_data/entities.json');
+                if (!response.ok) {
+                    throw new Error('Failed to load entities.json: ' + response.status);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error loading entities:', error);
+                throw error;
+            }
+        }
+
+        // Missing/partial visual_config.json is not fatal - the canonical
+        // defaults above still apply.
+        async function loadVisualConfig() {
+            try {
+                const response = await fetch('_data/visual_config.json');
+                if (!response.ok) return;
+                const vc = await response.json();
+                if (!vc || typeof vc !== 'object') return;
+
+                Object.assign(STATUS_COLORS, vc.status_colors || {});
+                Object.assign(TYPE_COLORS, vc.type_colors || vc.colors || {});
+                Object.assign(NODE_SHAPES, vc.node_shapes || vc.shapes || {});
+                Object.assign(NODE_SIZES, vc.node_sizes || {});
+                Object.assign(PHYSICS_CONFIG, vc.physics || {});
+
+                const styles = vc.edge_styles || {};
+                Object.keys(styles).forEach(function (key) {
+                    const incoming = styles[key];
+                    if (!incoming || typeof incoming !== 'object') return;
+                    const base = EDGE_STYLES[key] || Object.assign({}, EDGE_STYLES.default);
+                    EDGE_STYLES[key] = Object.assign({}, base, incoming);
+                });
+            } catch (error) {
+                console.warn('No usable visual_config.json, using built-in defaults:', error.message);
+            }
+        }
+
+        // =====================================================================
+        // Node / edge construction
+        // =====================================================================
+        function createNodes(entities) {
+            const nodes = [];
+            const seen = {};
+            const data = entities || {};
+
+            function push(record) {
+                if (!record.id || seen[record.id]) return;
+                seen[record.id] = true;
+                nodes.push(record);
+            }
+
+            (data.claims || []).forEach(function (claim) {
+                if (!claim || !claim.id) return;
+                const type = claim.type || 'concept';
+                const status = claim.status || null;
+                const asserted = parseDate(claim.asserted);
+                const retired = parseDate(claim.retired);
+                push({
+                    id: claim.id,
+                    label: claim.label || claim.id,
+                    nodeType: 'claim',
+                    entityType: type,
+                    status: status,
+                    asserted: asserted,
+                    retired: retired,
+                    size: NODE_SIZES[type] || NODE_SIZES.claim || 20,
+                    shape: NODE_SHAPES[type] || NODE_SHAPES.default,
+                    data: claim
+                });
+            });
+
+            (data.runs || []).forEach(function (run) {
+                if (!run || !run.id) return;
+                const type = run.type || 'run';
+                push({
+                    id: run.id,
+                    label: run.label || run.id,
+                    nodeType: 'run',
+                    entityType: type,
+                    status: run.status || null,
+                    asserted: parseDate(run.date),
+                    retired: null,
+                    size: NODE_SIZES[type] || NODE_SIZES.run || 16,
+                    shape: NODE_SHAPES[type] || NODE_SHAPES.default,
+                    data: run
+                });
+            });
+
+            (data.sources || []).forEach(function (source) {
+                if (!source || !source.id) return;
+                const type = source.type || 'doc';
+                push({
+                    id: source.id,
+                    label: source.title || source.label || source.id,
+                    nodeType: 'source',
+                    entityType: type,
+                    status: source.status || null,
+                    asserted: parseDate(source.date),
+                    retired: null,
+                    size: NODE_SIZES[type] || NODE_SIZES.source || 14,
+                    shape: NODE_SHAPES[type] || NODE_SHAPES.default,
+                    data: source
+                });
+            });
+
+            return nodes;
+        }
+
+        function edgeWidth(rel, style) {
+            const raw = rel ? Number(rel.weight) : NaN;
+            if (isFinite(raw) && raw > 0) return clamp(raw, 1, 8);
+            return clamp(Number(style.width) || 3, 1, 8);
+        }
+
+        function createEdges(entities) {
+            const edges = [];
+            const data = entities || {};
+            let counter = 0;
+
+            (data.relationships || []).forEach(function (rel) {
+                if (!rel || !rel.from || !rel.to) return;
+                // Skip dangling relationships rather than letting vis throw.
+                if (!nodeIndex[rel.from] || !nodeIndex[rel.to]) {
+                    console.warn('Skipping relationship with unknown endpoint:', rel.from, '->', rel.to);
+                    return;
+                }
+                const type = rel.type || 'relates-to';
+                const style = edgeStyleFor(type);
+                const kind = edgeKind(type);
+                edges.push({
+                    id: 'e' + (counter++),
+                    from: rel.from,
+                    to: rel.to,
+                    relType: type,
+                    relKind: kind,
+                    asserted: parseDate(rel.asserted),
+                    label: kind === 'epistemic' ? type : '',
+                    title: type + (rel.description ? ' — ' + rel.description : ''),
+                    arrows: normalizeArrows(style),
+                    dashes: normalizeDashes(style),
+                    width: edgeWidth(rel, style),
+                    baseColour: style.color,
+                    color: { color: style.color, highlight: shade(style.color, -0.15), hover: shade(style.color, -0.15), opacity: 1 },
+                    font: { size: 10, face: 'italic arial', color: shade(style.color, -0.2), strokeWidth: 4, strokeColor: '#ffffff' },
+                    smooth: { type: 'curvedCW', roundness: 0.16 },
+                    data: rel
+                });
+            });
+
+            return edges;
+        }
+
+        function buildIndexes() {
+            nodeIndex = {};
+            adjacency = {};
+            allNodes.forEach(function (node) {
+                nodeIndex[node.id] = node;
+                adjacency[node.id] = [];
+            });
+        }
+
+        function buildAdjacency() {
+            Object.keys(adjacency).forEach(function (id) { adjacency[id] = []; });
+            allEdges.forEach(function (edge) {
+                if (adjacency[edge.from]) {
+                    adjacency[edge.from].push({
+                        other: edge.to, type: edge.relType, kind: edge.relKind,
+                        dir: 'out', description: (edge.data && edge.data.description) || '',
+                        asserted: edge.asserted, edgeId: edge.id
+                    });
+                }
+                if (adjacency[edge.to]) {
+                    adjacency[edge.to].push({
+                        other: edge.from, type: edge.relType, kind: edge.relKind,
+                        dir: 'in', description: (edge.data && edge.data.description) || '',
+                        asserted: edge.asserted, edgeId: edge.id
+                    });
+                }
+            });
+        }
+
+        // =====================================================================
+        // Visual state: colour mode + filters + timeline, all funnelled through
+        // applyVisualState() so nothing can drift out of sync.
+        // =====================================================================
+        function cursorTime() {
+            if (timelineMin === null || timelineMax === null) return Infinity;
+            return timelineMin + timelineValue * DAY_MS;
+        }
+
+        function isTimelineAtEnd() {
+            return timelineMin === null || timelineValue >= timelineDays;
+        }
+
+        function nodeMatchesSearch(node) {
+            if (!searchTerm) return true;
+            const d = node.data || {};
+            const haystack = [
+                node.label, node.id, d.description, d.title, d.label,
+                d.path, d.script, d.output_dir, node.status, node.entityType
+            ].join(' ').toLowerCase();
+            return haystack.indexOf(searchTerm) !== -1;
+        }
+
+        function nodeMatchesChips(node) {
+            if (node.status && activeStatuses[node.status] === false) return false;
+            if (node.entityType && activeTypes[node.entityType] === false) return false;
+            return true;
+        }
+
+        // A node is timeline-visible unless it has an asserted date in the future
+        // of the cursor. Nodes with no date information are always visible.
+        function nodeVisibleAtCursor(node, cursor) {
+            if (node.asserted === null || node.asserted === undefined) return true;
+            return node.asserted <= cursor;
+        }
+
+        function nodeRetiredAtCursor(node, cursor) {
+            if (node.retired === null || node.retired === undefined) return false;
+            return node.retired <= cursor;
+        }
+
+        // The colour a node would take if it were still standing.
+        function nodeLiveColour(node) {
+            if (colourMode === 'status' && node.status) return statusColour(node.status);
+            return typeColour(node.entityType);
+        }
+
+        // Retired-as-of-the-cursor nodes fill with the retired grey; their
+        // would-be colour survives as the border so the status stays legible.
+        function nodeDisplayColour(node, retiredNow) {
+            return retiredNow ? RETIRED_COLOR : nodeLiveColour(node);
+        }
+
+        function nodeTooltip(node) {
+            const d = node.data || {};
+            const desc = d.description || '';
+            const trunc = desc.length > 180 ? desc.substring(0, 177) + '...' : desc;
+            let html = '<b>' + esc(node.label) + '</b>';
+            html += '<br>Type: ' + esc(node.entityType || 'n/a');
+            if (node.status) html += '<br>Status: ' + esc(node.status.toUpperCase());
+            if (d.phase) html += '<br>Phase: ' + esc(phaseLabel(d.phase));
+            if (node.asserted !== null && node.asserted !== undefined) html += '<br>Asserted: ' + formatDate(node.asserted);
+            if (node.retired !== null && node.retired !== undefined) html += '<br>Retired: ' + formatDate(node.retired);
+            if (trunc) html += '<br><br>' + esc(trunc);
+            return html;
+        }
+
+        function applyVisualState() {
+            if (!nodesDataSet || !edgesDataSet) return;
+
+            const cursor = cursorTime();
+            const visible = {};
+            const nodeUpdates = [];
+
+            allNodes.forEach(function (node) {
+                const passesChips = nodeMatchesChips(node);
+                const passesSearch = nodeMatchesSearch(node);
+                const passesFocus = !focusedNodeIds || focusedNodeIds[node.id] === true;
+                const passesTime = nodeVisibleAtCursor(node, cursor);
+                const hidden = !(passesChips && passesSearch && passesFocus && passesTime);
+                visible[node.id] = !hidden;
+
+                const retiredNow = nodeRetiredAtCursor(node, cursor);
+                const colour = nodeDisplayColour(node, retiredNow);
+                const border = retiredNow ? nodeLiveColour(node) : shade(colour, -0.22);
+
+                nodeUpdates.push({
+                    id: node.id,
+                    label: node.label,
+                    title: nodeTooltip(node),
+                    shape: node.shape,
+                    size: node.size,
+                    hidden: hidden,
+                    opacity: retiredNow ? RETIRED_OPACITY : 1,
+                    borderWidth: retiredNow ? 3 : 2,
+                    shapeProperties: { borderDashes: retiredNow ? [4, 4] : false },
+                    color: {
+                        background: colour,
+                        border: border,
+                        highlight: { background: shade(colour, 0.12), border: shade(border, -0.3) },
+                        hover: { background: shade(colour, 0.08), border: shade(border, -0.3) }
+                    },
+                    font: { size: node.nodeType === 'claim' ? 14 : 12, color: '#2c3e50' }
+                });
+            });
+
+            nodesDataSet.update(nodeUpdates);
+
+            const edgeUpdates = allEdges.map(function (edge) {
+                const endpointsVisible = visible[edge.from] === true && visible[edge.to] === true;
+                const timeOk = (edge.asserted === null || edge.asserted === undefined) || edge.asserted <= cursor;
+                return { id: edge.id, hidden: !(endpointsVisible && timeOk) };
+            });
+            edgesDataSet.update(edgeUpdates);
+
+            renderLegend();
+        }
+
+        function setColourMode(mode) {
+            colourMode = (mode === 'type') ? 'type' : 'status';
+            const select = document.getElementById('colour-mode');
+            if (select && select.value !== colourMode) select.value = colourMode;
+            applyVisualState();
+        }
+
+        // =====================================================================
+        // Filter chips
+        // =====================================================================
+        function collectPresentValues() {
+            // Null-prototype maps so a status literally named 'constructor' or
+            // 'toString' cannot masquerade as present.
+            const statuses = Object.create(null);
+            const types = Object.create(null);
+            allNodes.forEach(function (node) {
+                if (node.status) statuses[node.status] = true;
+                if (node.entityType) types[node.entityType] = true;
+            });
+            // Known statuses first, in severity order; then anything the data
+            // carries that this viewer's vocabulary does not list, so extending
+            // the vocabulary elsewhere can never make nodes vanish from here.
+            const orderedStatuses = STATUS_ORDER.filter(function (s) { return statuses[s]; });
+            Object.keys(statuses).forEach(function (s) {
+                if (orderedStatuses.indexOf(s) === -1) orderedStatuses.push(s);
+            });
+            const orderedTypes = TYPE_ORDER.filter(function (t) { return types[t]; });
+            Object.keys(types).forEach(function (t) {
+                if (orderedTypes.indexOf(t) === -1) orderedTypes.push(t);
+            });
+            return { statuses: orderedStatuses, types: orderedTypes };
+        }
+
+        function buildChips() {
+            const present = collectPresentValues();
+            const statusBar = document.getElementById('status-chips');
+            const typeBar = document.getElementById('type-chips');
+            if (!statusBar || !typeBar) return;
+
+            // Always offer the full canonical status vocabulary so the chip row
+            // is stable across datasets; mark ones absent from the data. Statuses
+            // the data carries but the canonical list does not know about are
+            // appended so they stay filterable instead of silently disappearing.
+            const statusList = STATUS_ORDER.slice();
+            present.statuses.forEach(function (s) {
+                if (statusList.indexOf(s) === -1) statusList.push(s);
+            });
+
+            activeStatuses = Object.create(null);
+            activeTypes = Object.create(null);
+
+            let html = '<span class="chip-group-label">Status</span>';
+            statusList.forEach(function (status) {
+                activeStatuses[status] = true;
+                const count = allNodes.filter(function (n) { return n.status === status; }).length;
+                html += '<button class="chip active" id="chip-status-' + esc(status) + '"' +
+                    ' data-status="' + esc(status) + '"' +
+                    ' title="' + esc(statusLabel(status)) + '"' +
+                    ' onclick="toggleStatusChip(\'' + jsAttr(status) + '\')">' +
+                    '<span class="swatch" style="background:' + esc(statusColour(status)) + '"></span>' +
+                    esc(status) + ' (' + count + ')</button>';
+            });
+            html += '<button class="chip active" id="chip-status-all" onclick="setAllStatusChips(true)">all</button>';
+            html += '<button class="chip" id="chip-status-none" onclick="setAllStatusChips(false)">none</button>';
+            statusBar.innerHTML = html;
+
+            let thtml = '<span class="chip-group-label">Type</span>';
+            present.types.forEach(function (type) {
+                activeTypes[type] = true;
+                const count = allNodes.filter(function (n) { return n.entityType === type; }).length;
+                thtml += '<button class="chip active" id="chip-type-' + esc(type) + '"' +
+                    ' data-type="' + esc(type) + '"' +
+                    ' onclick="toggleTypeChip(\'' + jsAttr(type) + '\')">' +
+                    '<span class="swatch" style="background:' + esc(typeColour(type)) + '"></span>' +
+                    esc(type) + ' (' + count + ')</button>';
+            });
+            thtml += '<button class="chip active" id="chip-type-all" onclick="setAllTypeChips(true)">all</button>';
+            thtml += '<button class="chip" id="chip-type-none" onclick="setAllTypeChips(false)">none</button>';
+            typeBar.innerHTML = thtml;
+
+            updateFilterSummary();
+        }
+
+        function syncChipClasses() {
+            Object.keys(activeStatuses).forEach(function (status) {
+                const el = document.getElementById('chip-status-' + status);
+                if (el) el.classList.toggle('active', activeStatuses[status] !== false);
+            });
+            Object.keys(activeTypes).forEach(function (type) {
+                const el = document.getElementById('chip-type-' + type);
+                if (el) el.classList.toggle('active', activeTypes[type] !== false);
+            });
+            updateFilterSummary();
+        }
+
+        function toggleStatusChip(status) {
+            activeStatuses[status] = activeStatuses[status] === false;
+            focusedNodeIds = null;
+            syncChipClasses();
+            applyVisualState();
+        }
+
+        function toggleTypeChip(type) {
+            activeTypes[type] = activeTypes[type] === false;
+            focusedNodeIds = null;
+            syncChipClasses();
+            applyVisualState();
+        }
+
+        function setAllStatusChips(on) {
+            Object.keys(activeStatuses).forEach(function (s) { activeStatuses[s] = !!on; });
+            focusedNodeIds = null;
+            syncChipClasses();
+            applyVisualState();
+        }
+
+        function setAllTypeChips(on) {
+            Object.keys(activeTypes).forEach(function (t) { activeTypes[t] = !!on; });
+            focusedNodeIds = null;
+            syncChipClasses();
+            applyVisualState();
+        }
+
+        // Legacy-compatible filter entry point: filterNodes('all') or a type name.
+        function filterNodes(type) {
+            focusedNodeIds = null;
+            if (!type || type === 'all') {
+                setAllStatusChips(true);
+                Object.keys(activeTypes).forEach(function (t) { activeTypes[t] = true; });
+            } else {
+                Object.keys(activeTypes).forEach(function (t) { activeTypes[t] = (t === type); });
+            }
+            syncChipClasses();
+            applyVisualState();
+            if (network) network.fit({ animation: true });
+        }
+
+        // =====================================================================
+        // Legend
+        // =====================================================================
+        function renderLegend() {
+            const legend = document.getElementById('legend');
+            if (!legend) return;
+
+            const present = collectPresentValues();
+            let html = '';
+
+            if (colourMode === 'status') {
+                html += '<h4>Colour = status</h4>';
+                const statuses = present.statuses.length ? present.statuses : STATUS_ORDER;
+                statuses.forEach(function (status) {
+                    html += '<div class="legend-row"><span class="legend-swatch" style="background:' +
+                        esc(statusColour(status)) + '"></span><span>' + esc(statusLabel(status)) + '</span></div>';
+                });
+                html += '<div class="legend-note">Runs, models and sources carry no epistemic status; they keep their type colour.</div>';
+            } else {
+                html += '<h4>Colour = type</h4>';
+                const types = present.types.length ? present.types : TYPE_ORDER;
+                types.forEach(function (type) {
+                    html += '<div class="legend-row"><span class="legend-swatch" style="background:' +
+                        esc(typeColour(type)) + '"></span><span>' + esc(type) + '</span></div>';
+                });
+            }
+
+            html += '<div class="legend-section"><h4>Shape = type</h4>';
+            (present.types.length ? present.types : TYPE_ORDER).forEach(function (type) {
+                html += '<div class="legend-row"><span>' + esc(NODE_SHAPES[type] || NODE_SHAPES.default) +
+                    '</span><span style="color:#7f8c8d">' + esc(type) + '</span></div>';
+            });
+            html += '</div>';
+
+            html += '<div class="legend-section"><h4>Edges</h4>';
+            const shownEdgeTypes = {};
+            allEdges.forEach(function (e) { shownEdgeTypes[e.relType] = true; });
+            const edgeList = EPISTEMIC_TYPES.concat(STRUCTURAL_TYPES, ASSOCIATIVE_TYPES)
+                .filter(function (t) { return shownEdgeTypes[t]; });
+            (edgeList.length ? edgeList : EPISTEMIC_TYPES).forEach(function (type) {
+                const style = edgeStyleFor(type);
+                const dashStyle = style.dashes ? 'dashed' : 'solid';
+                html += '<div class="legend-row"><span class="legend-line" style="border-top-color:' +
+                    esc(style.color) + '; border-top-style:' + dashStyle + '"></span><span>' +
+                    esc(type) + '</span></div>';
+            });
+            html += '</div>';
+
+            html += '<div class="legend-section"><div class="legend-row">' +
+                '<span class="legend-swatch" style="background:' + RETIRED_COLOR +
+                '; border:2px solid ' + esc(statusColour('refuted')) + '; opacity:0.6"></span>' +
+                '<span>retired as of the cursor (rim keeps its status colour)</span></div></div>';
+
+            legend.innerHTML = html;
+        }
+
+        // =====================================================================
+        // Timeline scrubber
+        // =====================================================================
+        function collectTimelineBounds(entities) {
+            const stamps = [];
+            const data = entities || {};
+
+            function add(value) {
+                const t = parseDate(value);
+                if (t !== null) stamps.push(t);
+            }
+
+            (data.claims || []).forEach(function (c) {
+                if (!c) return;
+                add(c.asserted); add(c.retired); add(c.date);
+            });
+            (data.runs || []).forEach(function (r) {
+                if (!r) return;
+                add(r.date); add(r.asserted); add(r.retired);
+            });
+            (data.sources || []).forEach(function (s) {
+                if (!s) return;
+                add(s.date); add(s.asserted); add(s.retired);
+            });
+            (data.relationships || []).forEach(function (rel) {
+                if (!rel) return;
+                add(rel.asserted); add(rel.date);
+            });
+            ((data.metadata || {}).phases || []).forEach(function (p) {
+                if (!p) return;
+                add(p.start); add(p.end);
+            });
+            add((data.metadata || {}).created);
+            add((data.metadata || {}).last_updated);
+
+            if (!stamps.length) return { min: null, max: null };
+            return { min: Math.min.apply(null, stamps), max: Math.max.apply(null, stamps) };
+        }
+
+        function setupTimeline(entities) {
+            const bounds = collectTimelineBounds(entities);
+            const slider = document.getElementById('timeline');
+            const bar = document.getElementById('timeline-bar');
+
+            timelineMin = bounds.min;
+            timelineMax = bounds.max;
+
+            if (timelineMin === null || timelineMax === null || timelineMax <= timelineMin) {
+                // Not enough date information to scrub over.
+                timelineDays = 0;
+                timelineValue = 0;
+                if (slider) { slider.min = '0'; slider.max = '0'; slider.value = '0'; }
+                if (bar) bar.classList.add('disabled');
+                updateTimelineReadout();
+                return;
+            }
+
+            timelineDays = Math.max(1, Math.round((timelineMax - timelineMin) / DAY_MS));
+            timelineValue = timelineDays; // default = present day, everything shown
+            if (slider) {
+                slider.min = '0';
+                slider.max = String(timelineDays);
+                slider.value = String(timelineValue);
+            }
+            if (bar) bar.classList.remove('disabled');
+            updateTimelineReadout();
+        }
+
+        function phaseLabel(phaseId) {
+            if (!phaseId) return '';
+            for (let i = 0; i < phases.length; i++) {
+                if (phases[i].id === phaseId) return phases[i].label || phases[i].id;
+            }
+            return phaseId;
+        }
+
+        // The phase in force at `ms` is the last one whose start is <= ms.
+        // `phases` is sorted by start at load time.
+        function phaseAt(ms) {
+            if (!phases.length || ms === null || ms === undefined || !isFinite(ms)) return null;
+            let current = null;
+            for (let i = 0; i < phases.length; i++) {
+                const start = parseDate(phases[i].start);
+                if (start === null || start <= ms) {
+                    current = phases[i];
+                } else {
+                    break;
+                }
+            }
+            return current;
+        }
+
+        function updateTimelineReadout() {
+            const dateEl = document.getElementById('timeline-date');
+            const phaseEl = document.getElementById('timeline-phase');
+            if (!dateEl || !phaseEl) return;
+
+            if (timelineMin === null) {
+                dateEl.textContent = '--';
+                phaseEl.textContent = 'no dated entities';
+                return;
+            }
+
+            const cursor = cursorTime();
+            dateEl.textContent = formatDate(cursor);
+            const phase = phaseAt(cursor);
+            const suffix = isTimelineAtEnd() ? ' — present' : '';
+            phaseEl.textContent = (phase ? (phase.label || phase.id) : 'before first phase') + suffix;
+        }
+
+        function onTimelineInput(value) {
+            const n = Number(value);
+            timelineValue = isFinite(n) ? clamp(Math.round(n), 0, timelineDays) : timelineDays;
+            updateTimelineReadout();
+            applyVisualState();
+        }
+
+        function setTimelineValue(dayIndex) {
+            const slider = document.getElementById('timeline');
+            timelineValue = clamp(Math.round(dayIndex), 0, timelineDays);
+            if (slider) slider.value = String(timelineValue);
+            updateTimelineReadout();
+            applyVisualState();
+        }
+
+        function toggleTimelinePlay() {
+            if (timelinePlaying) {
+                stopTimelinePlay();
+            } else {
+                startTimelinePlay();
+            }
+        }
+
+        function startTimelinePlay() {
+            if (timelineMin === null || timelineDays <= 0) return;
+            timelinePlaying = true;
+            const btn = document.getElementById('timeline-play');
+            if (btn) btn.textContent = 'Pause';
+
+            // Restart from the beginning if we are parked at the end.
+            const startFraction = isTimelineAtEnd() ? 0 : (timelineValue / timelineDays);
+            timelinePlayStart = Date.now() - startFraction * PLAY_DURATION_MS;
+
+            const step = function () {
+                if (!timelinePlaying) return;
+                const elapsed = Date.now() - timelinePlayStart;
+                const fraction = clamp(elapsed / PLAY_DURATION_MS, 0, 1);
+                const nextValue = clamp(Math.round(fraction * timelineDays), 0, timelineDays);
+                // Snap to whole days: only redraw when the day actually changes.
+                if (nextValue !== timelineValue) {
+                    setTimelineValue(nextValue);
+                }
+                if (fraction >= 1) {
+                    setTimelineValue(timelineDays);
+                    stopTimelinePlay();
+                    return;
+                }
+                timelineRaf = requestAnimationFrame(step);
+            };
+            timelineRaf = requestAnimationFrame(step);
+        }
+
+        function stopTimelinePlay() {
+            timelinePlaying = false;
+            if (timelineRaf) {
+                cancelAnimationFrame(timelineRaf);
+                timelineRaf = null;
+            }
+            const btn = document.getElementById('timeline-play');
+            if (btn) btn.textContent = 'Play';
+        }
+
+        // =====================================================================
+        // Network
+        // =====================================================================
+        // vis-network empties its container element when it builds its canvas,
+        // which takes the absolutely-positioned #legend overlay with it. Hold a
+        // reference before construction and re-attach afterwards.
+        function detachLegend() {
+            let el = document.getElementById('legend');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'legend';
+            }
+            if (el.parentNode) el.parentNode.removeChild(el);
+            return el;
+        }
+
+        function attachLegend(container, legendEl) {
+            if (!container || !legendEl) return;
+            if (!document.getElementById('legend')) container.appendChild(legendEl);
+        }
+
+        function initNetwork() {
+            const container = document.getElementById('graph');
+            const data = { nodes: nodesDataSet, edges: edgesDataSet };
+            const legendEl = detachLegend();
+
+            const options = {
+                physics: buildPhysicsOptions(),
+                // hierarchical is stated explicitly rather than omitted. A mode
+                // that switches it on through layoutOverride must not be able to
+                // leave it on for the next graph merely by failing to mention it
+                // — vis merges these options, so an unstated key keeps its last
+                // value. Any mode that sets layoutOverride is also responsible
+                // for resetting it to null on the way out, since the layout
+                // signature below is derived from it and an unchanged signature
+                // skips the network rebuild entirely.
+                layout: { randomSeed: 42, improvedLayout: true, hierarchical: { enabled: false } },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 120,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: { borderWidth: 2, shadow: true },
+                edges: {
+                    smooth: { type: 'continuous' },
+                    font: { size: 10, face: 'italic arial', color: '#666666', strokeWidth: 4, strokeColor: '#ffffff' }
+                }
+            };
+
+            // Extension point: a specialised render mode can swap in its own
+            // layout/physics/edge options without forking initNetwork().
+            if (layoutOverride) {
+                if (layoutOverride.layout) options.layout = Object.assign({}, options.layout, layoutOverride.layout);
+                if (layoutOverride.physics) options.physics = layoutOverride.physics;
+                if (layoutOverride.edges) options.edges = Object.assign({}, options.edges, layoutOverride.edges);
+                if (layoutOverride.nodes) options.nodes = Object.assign({}, options.nodes, layoutOverride.nodes);
+            }
+
+            network = new vis.Network(container, data, options);
+            attachLegend(container, legendEl);
+
+            network.on('click', function (params) {
+                if (params.nodes.length > 0) {
+                    showNodeDetails(params.nodes[0]);
+                } else if (isMobileLayout()) {
+                    // tapping bare canvas dismisses whichever overlay is open
+                    closeMobilePanels();
+                }
+            });
+
+            network.on('doubleClick', function (params) {
+                if (params.nodes.length > 0) {
+                    focusOnNode(params.nodes[0]);
+                }
+            });
+
+            network.on('oncontext', function (params) {
+                params.event.preventDefault();
+                resetView();
+            });
+
+            network.on('stabilizationProgress', function (params) {
+                const progress = Math.round((params.iterations / params.total) * 100);
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) {
+                    loadingEl.innerHTML = '<div style="text-align:center;">' +
+                        '<div style="font-size:20px;margin-bottom:10px;">Loading evidence graph...</div>' +
+                        '<div style="font-size:16px;color:#666;">' + progress + '%</div>' +
+                        '<div style="width:200px;height:4px;background:#ddd;margin:15px auto;border-radius:2px;overflow:hidden;">' +
+                        '<div style="width:' + progress + '%;height:100%;background:#27ae60;transition:width 0.3s;"></div>' +
+                        '</div></div>';
+                }
+            });
+
+            network.once('stabilizationIterationsDone', function () {
+                const el = document.getElementById('loading');
+                if (el) el.classList.add('hidden');
+            });
+
+            // Kick physics on shortly after first paint so the graph settles
+            // into a readable layout. Skipped when the active render mode
+            // supplies its own deterministic layout.
+            setTimeout(function () {
+                if (network && !(layoutOverride && layoutOverride.freezePhysics)) {
+                    network.setOptions({ physics: { enabled: true } });
+                    network.stabilize(60);
+                }
+            }, 100);
+
+            setTimeout(function () {
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl && !loadingEl.classList.contains('hidden')) {
+                    console.warn('Timeout: forcing loading screen to hide');
+                    loadingEl.classList.add('hidden');
+                }
+            }, 10000);
+        }
+
+        // =====================================================================
+        // Details panel
+        // =====================================================================
+        function renderStatusPill(status) {
+            if (!status) return '';
+            return '<span class="status-pill" style="background:' + esc(statusColour(status)) + '">' +
+                esc(status) + '</span>';
+        }
+
+        function renderField(label, valueHtml) {
+            if (valueHtml === '' || valueHtml === null || valueHtml === undefined) return '';
+            return '<div class="field"><div class="field-label">' + esc(label) + '</div>' +
+                '<div class="field-value">' + valueHtml + '</div></div>';
+        }
+
+        function renderPathValue(path) {
+            if (!path) return '';
+            if (/^https?:\/\//i.test(path)) {
+                return '<a href="' + esc(path) + '" target="_blank" rel="noopener" style="word-break:break-all;">' + esc(path) + '</a>';
+            }
+            if (/\.(md|markdown)(#|$)/i.test(path)) {
+                return '<span class="node-link" onclick="openMarkdownPath(\'' + jsAttr(path) + '\')">' + esc(path) + '</span>';
+            }
+            return '<code style="font-size:12px;word-break:break-all;">' + esc(path) + '</code>';
+        }
+
+        function renderRelationshipsFor(nodeId) {
+            const links = adjacency[nodeId] || [];
+            if (!links.length) return '';
+
+            const buckets = {
+                'outgoing-epistemic': [], 'incoming-epistemic': [],
+                'outgoing-structural': [], 'incoming-structural': [],
+                'outgoing-associative': [], 'incoming-associative': []
+            };
+
+            links.forEach(function (link) {
+                const kind = (link.kind === 'epistemic' || link.kind === 'structural') ? link.kind : 'associative';
+                const key = (link.dir === 'out' ? 'outgoing-' : 'incoming-') + kind;
+                buckets[key].push(link);
+            });
+
+            const titles = {
+                'outgoing-epistemic': 'Epistemic — outgoing',
+                'incoming-epistemic': 'Epistemic — incoming',
+                'outgoing-structural': 'Structural — outgoing',
+                'incoming-structural': 'Structural — incoming',
+                'outgoing-associative': 'Associative — outgoing',
+                'incoming-associative': 'Associative — incoming'
+            };
+
+            let html = '';
+            Object.keys(buckets).forEach(function (key) {
+                const items = buckets[key];
+                if (!items.length) return;
+                html += '<div class="rel-group"><div class="rel-group-title">' + esc(titles[key]) + '</div>';
+                items.forEach(function (link) {
+                    const other = nodeIndex[link.other];
+                    const otherLabel = other ? other.label : link.other;
+                    const style = edgeStyleFor(link.type);
+                    const arrow = link.dir === 'out' ? '&rarr;' : '&larr;';
+                    html += '<div class="rel-item" style="border-left-color:' + esc(style.color) + '">' +
+                        '<span class="rel-type" style="color:' + esc(shade(style.color, -0.15)) + '">' + esc(link.type) + '</span> ' +
+                        arrow + ' <span class="node-link" onclick="navigateToNode(\'' + jsAttr(link.other) + '\')">' +
+                        esc(otherLabel) + '</span>';
+                    if (link.description) {
+                        html += '<span class="rel-desc">' + esc(link.description) + '</span>';
+                    }
+                    if (link.asserted !== null && link.asserted !== undefined) {
+                        html += '<span class="rel-desc">asserted ' + formatDate(link.asserted) + '</span>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            });
+
+            return html;
+        }
+
+        function showNodeDetails(nodeId) {
+            const node = nodeIndex[nodeId];
+            if (!node) return;
+
+            currentNodeId = nodeId;
+            const panel = document.getElementById('details-panel');
+            const title = document.getElementById('detail-title');
+            const content = document.getElementById('detail-content');
+            panel.classList.remove('hidden');
+            // On a phone the sheet and the filter overlays fight for the same
+            // space; reading a node wins.
+            if (isMobileLayout()) closeMobilePanels();
+            title.textContent = node.label;
+
+            const d = node.data || {};
+            let html = '';
+
+            // Status + type header line
+            let header = '';
+            if (node.status) header += renderStatusPill(node.status) + ' ';
+            if (node.entityType) header += '<span class="type-pill">' + esc(node.entityType) + '</span>';
+            if (header) html += '<div class="field"><div class="field-value">' + header + '</div></div>';
+
+            html += renderField('ID', '<code style="font-size:12px;">' + esc(node.id) + '</code>');
+
+            if (d.description) html += renderField('Description', esc(d.description));
+            if (d.phase) html += renderField('Phase', esc(phaseLabel(d.phase)));
+
+            if (node.asserted !== null && node.asserted !== undefined) {
+                html += renderField('Asserted', formatDate(node.asserted));
+            }
+            if (node.retired !== null && node.retired !== undefined) {
+                html += renderField('Retired', formatDate(node.retired));
+            } else if (node.nodeType === 'claim') {
+                html += renderField('Retired', '<span style="color:#7f8c8d">still standing</span>');
+            }
+
+            if (d.doc_ref) html += renderField('Doc ref', renderPathValue(d.doc_ref));
+            if (d.path) html += renderField('Path', renderPathValue(d.path));
+            if (d.script) html += renderField('Script', renderPathValue(d.script));
+            if (d.output_dir) html += renderField('Output dir', renderPathValue(d.output_dir));
+            if (d.n) html += renderField('Sample', esc(d.n));
+            if (d.url) html += renderField('Link', renderPathValue(d.url));
+
+            if (Array.isArray(d.evidence) && d.evidence.length) {
+                let ev = '';
+                d.evidence.forEach(function (runId) {
+                    const runNode = nodeIndex[runId];
+                    const label = runNode ? runNode.label : runId;
+                    ev += '<span class="node-link" onclick="navigateToNode(\'' + jsAttr(runId) + '\')">' +
+                        esc(label) + '</span><br>';
+                });
+                html += renderField('Evidence', ev);
+            }
+
+            const rels = renderRelationshipsFor(nodeId);
+            if (rels) {
+                html += '<div class="field"><div class="field-label">Relationships</div>' + rels + '</div>';
+            }
+
+            html += '<button class="action-button chain" id="btn-copy-chain" onclick="copyEvidenceChain(\'' +
+                jsAttr(nodeId) + '\')">Copy evidence chain</button>';
+            html += '<button class="action-button" id="btn-show-connections" onclick="focusOnNode(\'' +
+                jsAttr(nodeId) + '\')">Show connections</button>';
+            html += '<button class="action-button secondary" id="btn-clear-focus" onclick="resetView()">Reset view</button>';
+
+            content.innerHTML = html;
+
+            navigationHistory.push({ id: nodeId, label: node.label });
+            if (navigationHistory.length > 30) navigationHistory.shift();
+            updateBreadcrumb();
+        }
+
+        // Dismisses the details panel. On desktop the panel is a side column
+        // that already collapses via .hidden; on a phone it is a bottom sheet,
+        // where an explicit close control is the only way back to the graph.
+        function closeDetailsPanel() {
+            const panel = document.getElementById('details-panel');
+            if (panel && panel.classList) panel.classList.add('hidden');
+            currentNodeId = null;
+            if (typeof updateChatContextIndicator === 'function') updateChatContextIndicator();
+        }
+
+        function navigateToNode(nodeId) {
+            if (!nodeIndex[nodeId]) return;
+            if (network) {
+                try {
+                    network.selectNodes([nodeId]);
+                    network.focus(nodeId, { scale: 1.4, animation: true });
+                } catch (e) {
+                    console.warn('Could not focus node', nodeId, e.message);
+                }
+            }
+            showNodeDetails(nodeId);
+        }
+
+        function focusOnNode(nodeId) {
+            if (!network || !nodeIndex[nodeId]) return;
+            const connected = network.getConnectedNodes(nodeId) || [];
+            focusedNodeIds = {};
+            focusedNodeIds[nodeId] = true;
+            connected.forEach(function (id) { focusedNodeIds[id] = true; });
+            applyVisualState();
+            network.focus(nodeId, { scale: 1.15, animation: true });
+        }
+
+        function resetView() {
+            focusedNodeIds = null;
+            searchTerm = '';
+            const searchEl = document.getElementById('search');
+            if (searchEl) searchEl.value = '';
+            setAllStatusChips(true);
+            setAllTypeChips(true);
+            stopTimelinePlay();
+            setTimelineValue(timelineDays);
+            navigationHistory = [];
+            updateBreadcrumb();
+            applyVisualState();
+            if (network) network.fit({ animation: true });
+        }
+
+        function updateBreadcrumb() {
+            const breadcrumbPath = document.getElementById('breadcrumb-path');
+            if (!breadcrumbPath) return;
+
+            // Narrow screens hide the bar entirely while it holds nothing but
+            // the placeholder (see the mobile block in <style>); desktop keeps
+            // showing the hint exactly as before.
+            const bar = document.getElementById('breadcrumb');
+            if (bar && bar.classList) {
+                bar.classList.toggle('is-empty', navigationHistory.length === 0);
+            }
+
+            if (navigationHistory.length === 0) {
+                breadcrumbPath.innerHTML = 'Click a node to start exploring';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < navigationHistory.length; i++) {
+                const item = navigationHistory[i];
+                if (i > 0) html += '<span class="breadcrumb-separator">&rsaquo;</span>';
+                html += '<span class="breadcrumb-item" onclick="navigateToNode(\'' + jsAttr(item.id) + '\')">' +
+                    esc(item.label) + '</span>';
+            }
+            breadcrumbPath.innerHTML = html;
+        }
+
+        // =====================================================================
+        // Evidence chain (breadth-first walk, max depth 3, copied as plain text)
+        // =====================================================================
+        function buildChainTree(rootId, maxDepth) {
+            const root = { id: rootId, link: null, children: [] };
+            const visited = {};
+            visited[rootId] = true;
+            let frontier = [root];
+
+            for (let depth = 1; depth <= maxDepth; depth++) {
+                const next = [];
+                for (let i = 0; i < frontier.length; i++) {
+                    const parent = frontier[i];
+                    const links = adjacency[parent.id] || [];
+                    for (let j = 0; j < links.length; j++) {
+                        const link = links[j];
+                        if (CHAIN_TYPES.indexOf(link.type) === -1) continue;
+                        if (visited[link.other]) continue;
+                        visited[link.other] = true;
+                        const child = { id: link.other, link: link, children: [] };
+                        parent.children.push(child);
+                        next.push(child);
+                    }
+                }
+                frontier = next;
+                if (!frontier.length) break;
+            }
+            return root;
+        }
+
+        function chainNodeLabel(nodeId) {
+            const node = nodeIndex[nodeId];
+            if (!node) return nodeId;
+            const d = node.data || {};
+            // Prefer a concrete artefact path over a generic title where present.
+            if (node.nodeType === 'source' && d.path && !/^https?:\/\//i.test(d.path)) {
+                return d.path;
+            }
+            return node.label;
+        }
+
+        function buildEvidenceChainText(rootId, maxDepth) {
+            const root = buildChainTree(rootId, maxDepth || 3);
+            const rootNode = nodeIndex[rootId];
+            const lines = [];
+
+            let rootLine = rootNode ? rootNode.label : rootId;
+            if (rootNode && rootNode.status) rootLine += '  [' + rootNode.status + ']';
+            lines.push(rootLine);
+
+            function walk(entry, depth) {
+                entry.children.forEach(function (child) {
+                    const indent = new Array(2 + 3 * (depth - 1) + 1).join(' ');
+                    const arrow = child.link.dir === 'in'
+                        ? '<- ' + child.link.type + ' --'
+                        : '-- ' + child.link.type + ' ->';
+                    lines.push(indent + arrow + ' ' + chainNodeLabel(child.id));
+                    walk(child, depth + 1);
+                });
+            }
+            walk(root, 1);
+
+            if (lines.length === 1) {
+                lines.push('  (no epistemic or structural links within 3 hops)');
+            }
+            return lines.join('\n');
+        }
+
+        function copyTextToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text).catch(function (err) {
+                    console.warn('Clipboard API failed, falling back:', err && err.message);
+                    return legacyCopy(text);
+                });
+            }
+            return legacyCopy(text);
+        }
+
+        function legacyCopy(text) {
+            return new Promise(function (resolve, reject) {
+                try {
+                    const area = document.createElement('textarea');
+                    area.value = text;
+                    area.setAttribute('readonly', '');
+                    area.style.position = 'fixed';
+                    area.style.top = '-1000px';
+                    area.style.left = '-1000px';
+                    document.body.appendChild(area);
+                    area.select();
+                    const ok = document.execCommand('copy');
+                    document.body.removeChild(area);
+                    if (ok) { resolve(); } else { reject(new Error('execCommand returned false')); }
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        }
+
+        function copyEvidenceChain(nodeId) {
+            const targetId = nodeId || currentNodeId;
+            if (!targetId || !nodeIndex[targetId]) {
+                showToast('No node selected');
+                return;
+            }
+            const text = buildEvidenceChainText(targetId, 3);
+            console.log('Evidence chain for ' + targetId + ':\n' + text);
+            copyTextToClipboard(text).then(function () {
+                showToast('Evidence chain copied to clipboard');
+            }).catch(function (err) {
+                console.error('Copy failed:', err);
+                showToast('Copy failed — chain printed to the console');
+            });
+        }
+
+        // =====================================================================
+        // Markdown panel
+        // =====================================================================
+        function slugify(text) {
+            return String(text || '').toLowerCase().trim()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-');
+        }
+
+        // doc_ref paths in the data are repo-relative, but the viewer may be
+        // served from the repo root or from its own directory. Try a short
+        // ladder of prefixes and remember whichever one answers.
+        const DOC_PATH_PREFIXES = ['', '../', '../../'];
+        let resolvedDocPrefix = null;
+
+        async function fetchDoc(path) {
+            const order = (resolvedDocPrefix === null)
+                ? DOC_PATH_PREFIXES.slice()
+                : [resolvedDocPrefix].concat(DOC_PATH_PREFIXES.filter(function (p) { return p !== resolvedDocPrefix; }));
+            let lastStatus = 404;
+            for (let i = 0; i < order.length; i++) {
+                try {
+                    const response = await fetch(order[i] + path);
+                    if (response.ok) {
+                        resolvedDocPrefix = order[i];
+                        return response;
+                    }
+                    lastStatus = response.status;
+                } catch (err) {
+                    lastStatus = 0;
+                }
+            }
+            return { ok: false, status: lastStatus };
+        }
+
+        function openMarkdownPath(ref) {
+            if (!ref) return;
+            const hashIndex = ref.indexOf('#');
+            const path = hashIndex === -1 ? ref : ref.substring(0, hashIndex);
+            const anchor = hashIndex === -1 ? '' : ref.substring(hashIndex + 1);
+
+            const panel = document.getElementById('markdown-panel');
+            const title = document.getElementById('markdown-title');
+            const tabs = document.getElementById('markdown-tabs');
+
+            title.textContent = ref;
+            tabs.innerHTML = '';
+            const tab = document.createElement('button');
+            tab.className = 'markdown-tab active';
+            tab.textContent = path.split('/').pop() || path;
+            tab.onclick = function () { loadMarkdownDoc(path, anchor, tab); };
+            tabs.appendChild(tab);
+
+            panel.classList.add('visible');
+            loadMarkdownDoc(path, anchor, tab);
+        }
+
+        async function loadMarkdownDoc(path, anchor, activeTab) {
+            const content = document.getElementById('markdown-content');
+            const tabs = document.getElementById('markdown-tabs');
+
+            if (tabs) {
+                const children = tabs.children;
+                for (let i = 0; i < children.length; i++) children[i].classList.remove('active');
+            }
+            if (activeTab) activeTab.classList.add('active');
+
+            content.innerHTML = '<p style="color:#7f8c8d">Loading ' + esc(path) + '...</p>';
+
+            try {
+                const response = await fetchDoc(path);
+                if (!response.ok) {
+                    content.innerHTML = '<p>Could not load <code>' + esc(path) + '</code> (' + response.status +
+                        '). It may live outside the served directory.</p>';
+                    return;
+                }
+                const markdown = await response.text();
+                content.innerHTML = (typeof marked !== 'undefined' && marked.parse)
+                    ? marked.parse(markdown)
+                    : '<pre>' + esc(markdown) + '</pre>';
+
+                // marked does not always emit heading ids - add them, then jump.
+                const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                for (let i = 0; i < headings.length; i++) {
+                    if (!headings[i].id) headings[i].id = slugify(headings[i].textContent);
+                }
+                if (anchor) {
+                    let target = null;
+                    try {
+                        const safeAnchor = (typeof CSS !== 'undefined' && CSS.escape)
+                            ? CSS.escape(anchor)
+                            : anchor.replace(/[^\w-]/g, '');
+                        if (safeAnchor) target = content.querySelector('#' + safeAnchor);
+                    } catch (e) {
+                        target = null;
+                    }
+                    if (!target) {
+                        const wanted = slugify(anchor);
+                        for (let i = 0; i < headings.length; i++) {
+                            if (headings[i].id === wanted || slugify(headings[i].textContent).indexOf(wanted) === 0) {
+                                target = headings[i];
+                                break;
+                            }
+                        }
+                    }
+                    if (target) {
+                        target.classList.add('md-anchor-hit');
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            } catch (error) {
+                content.innerHTML = '<p>Error loading document: ' + esc(error.message) + '</p>';
+            }
+        }
+
+        function closeMarkdownPanel() {
+            document.getElementById('markdown-panel').classList.remove('visible');
+        }
+
+        // =====================================================================
+        // Init
+        // =====================================================================
+        async function reloadData() {
+            const loading = document.getElementById('loading');
+            loading.classList.remove('hidden');
+            loading.textContent = 'Reloading evidence graph...';
+            try {
+                await loadAndInitialize();
+                showToast('Data reloaded');
+            } catch (error) {
+                showToast('Reload failed: ' + error.message);
+            }
+            loading.classList.add('hidden');
+        }
+
+        async function loadAndInitialize() {
+            entitiesData = await loadEntities();
+            await loadVisualConfig();
+
+            const metadata = (entitiesData && entitiesData.metadata) || {};
+            phases = Array.isArray(metadata.phases) ? metadata.phases.slice() : [];
+            phases.sort(function (a, b) {
+                const ta = parseDate(a && a.start) || 0;
+                const tb = parseDate(b && b.start) || 0;
+                return ta - tb;
+            });
+
+            const titleEl = document.getElementById('graph-title');
+            if (titleEl && metadata.title) titleEl.textContent = metadata.title;
+            if (metadata.title) document.title = metadata.title;
+
+            allNodes = createNodes(entitiesData);
+            buildIndexes();
+            allEdges = createEdges(entitiesData);
+            buildAdjacency();
+
+            buildChips();
+            updateBreadcrumb();
+            setupTimeline(entitiesData);
+
+            const visNodes = allNodes.map(function (node) {
+                return {
+                    id: node.id,
+                    label: node.label,
+                    title: nodeTooltip(node),
+                    shape: node.shape,
+                    size: node.size,
+                    borderWidth: 2,
+                    font: { size: node.nodeType === 'claim' ? 14 : 12, color: '#2c3e50' },
+                    color: { background: nodeDisplayColour(node, false) }
+                };
+            });
+
+            nodesDataSet = new vis.DataSet(visNodes);
+            edgesDataSet = new vis.DataSet(allEdges.map(function (edge) {
+                const copy = Object.assign({}, edge);
+                delete copy.data;
+                delete copy.baseColour;
+                delete copy.relKind;
+                delete copy.asserted;
+                delete copy.relType;
+                return copy;
+            }));
+
+            const layoutSignature = JSON.stringify(layoutOverride);
+            if (network !== null && layoutSignature !== networkLayoutSignature) {
+                // Some vis builds clear the whole container on destroy(), which
+                // would take the legend overlay with it - hold a reference and
+                // put it back afterwards.
+                const graphEl = document.getElementById('graph');
+                const legendEl = detachLegend();
+                try { network.destroy(); } catch (e) { console.warn('network.destroy() failed:', e.message); }
+                network = null;
+                attachLegend(graphEl, legendEl);
+            }
+            networkLayoutSignature = layoutSignature;
+
+            if (network === null) {
+                initNetwork();
+            } else {
+                network.setData({ nodes: nodesDataSet, edges: edgesDataSet });
+            }
+
+            applyVisualState();
+
+            console.log('Evidence graph loaded: ' +
+                (entitiesData.claims || []).length + ' claims, ' +
+                (entitiesData.runs || []).length + ' runs, ' +
+                (entitiesData.sources || []).length + ' sources, ' +
+                allEdges.length + ' relationships.');
+        }
+
+        window.addEventListener('load', async function () {
+            try {
+                await loadAndInitialize();
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                document.getElementById('loading').innerHTML =
+                    '<div style="text-align:center;">' +
+                    '<p style="color:#B3423F;font-size:18px;margin-bottom:20px;">Failed to load the evidence graph</p>' +
+                    '<p>' + esc(error.message) + '</p>' +
+                    '<p style="margin-top:20px;font-size:14px;">Make sure you are running the local server:<br>' +
+                    '<code>python start_server.py</code></p></div>';
+            }
+        });
+
+        // Acting on something in the overflow menu closes it, so the graph is
+        // not left behind a menu the user has already finished with. No-op on
+        // desktop, where the menu is not a menu.
+        (function () {
+            const secondary = document.getElementById('secondary-controls');
+            if (!secondary || typeof secondary.addEventListener !== 'function') return;
+            const dismiss = function () {
+                if (isMobileLayout()) setMobilePanel('more', false);
+            };
+            secondary.addEventListener('click', function (e) {
+                const target = e.target;
+                if (target && typeof target.closest === 'function' && target.closest('button')) dismiss();
+            });
+            secondary.addEventListener('change', dismiss);
+        })();
+
+        // Search: matches labels, descriptions and ids.
+        document.getElementById('search').addEventListener('input', function (e) {
+            searchTerm = e.target.value.trim().toLowerCase();
+            focusedNodeIds = null;
+            applyVisualState();
+        });
+
+        // Keyboard: escape backs out of the mobile overlays (and then the
+        // details sheet); space toggles playback unless typing.
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                const anyOpen = Object.keys(MOBILE_PANELS).some(function (key) {
+                    return isMobilePanelOpen(key);
+                });
+                if (anyOpen) {
+                    closeMobilePanels();
+                } else if (isMobileLayout()) {
+                    closeDetailsPanel();
+                }
+                return;
+            }
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleTimelinePlay();
+            }
+        });
+
+        // =====================================================================
+        // Chat System (optional - degrades gracefully with no endpoint)
+        // =====================================================================
+
+        // Point this at a Gemini-backed endpoint (the bundled
+        // gemini_api_server.py, or a deployed Cloudflare Worker). Leave it as
+        // an empty string to run the viewer with the chat panel disabled.
+        const CHAT_ENDPOINT = '';
+
+        const CHAT_HISTORY_LIMIT = 8;
+        const CHAT_ROLE_LABELS = { user: 'You', assistant: 'Assistant' };
+        const CHAT_WELCOME_HTML =
+            '<div class="chat-message assistant">' +
+            '<div class="chat-message-header">Assistant</div>' +
+            '<div class="chat-message-content">' +
+            '<p>New conversation. Ask about any claim, run or chain of evidence in this graph.</p>' +
+            '</div></div>';
+        const CHAT_OFFLINE_REPLY =
+            'No chat endpoint is configured for this graph, so I cannot answer right now. ' +
+            'The map itself still works — keep exploring, or set CHAT_ENDPOINT in viewer.html.';
+
+        let chatHistory = [];
+
+        function toggleChatPanel() {
+            const panel = document.getElementById('chat-panel');
+            panel.classList.toggle('visible');
+            if (panel.classList.contains('visible')) {
+                updateChatContextIndicator();
+                document.getElementById('chat-input').focus();
+            }
+        }
+
+        function closeChatPanel() {
+            document.getElementById('chat-panel').classList.remove('visible');
+        }
+
+        function updateChatContextIndicator() {
+            const indicator = document.getElementById('chat-context-indicator');
+            if (!indicator) return;
+            if (currentNodeId && nodeIndex[currentNodeId]) {
+                indicator.textContent = 'Context: ' + nodeIndex[currentNodeId].label;
+                indicator.classList.add('visible');
+            } else {
+                indicator.textContent = '';
+                indicator.classList.remove('visible');
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text).replace(/[&<>"']/g, function (ch) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+            });
+        }
+
+        function renderInlineMarkdown(escaped) {
+            const anchors = [];
+            let html = escaped;
+
+            html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, label, url) {
+                anchors.push('<a href="' + url + '" target="_blank" rel="noopener">' + label + '</a>');
+                return '\u0000' + (anchors.length - 1) + '\u0000';
+            });
+
+            html = html.replace(/https?:\/\/[^\s<\u0000]+/g, function (url) {
+                const trimmed = url.replace(/[.,;:!?)']+$/, '');
+                const rest = url.slice(trimmed.length);
+                anchors.push('<a href="' + trimmed + '" target="_blank" rel="noopener">' + trimmed + '</a>');
+                return '\u0000' + (anchors.length - 1) + '\u0000' + rest;
+            });
+
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+            return html.replace(/\u0000(\d+)\u0000/g, function (m, i) { return anchors[Number(i)]; });
+        }
+
+        function parseSimpleMarkdown(text) {
+            const paragraphs = String(text).split('\n\n').map(function (p) {
+                const lines = p.split('\n');
+                if (/^\s*([-*]|\d+\.)\s+/.test(lines[0])) {
+                    const items = lines.map(function (item) {
+                        const cleaned = item.trim().replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '');
+                        return '<li>' + renderInlineMarkdown(escapeHtml(cleaned)) + '</li>';
+                    }).join('');
+                    return '<ul>' + items + '</ul>';
+                }
+                const rendered = lines.map(function (l) { return renderInlineMarkdown(escapeHtml(l)); });
+                return '<p>' + rendered.join('<br>') + '</p>';
+            });
+            return paragraphs.join('');
+        }
+
+        function addChatMessage(role, text) {
+            const messagesDiv = document.getElementById('chat-messages');
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message ' + role;
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'chat-message-header';
+            headerDiv.textContent = CHAT_ROLE_LABELS[role] || role;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'chat-message-content';
+            if (role === 'assistant') {
+                contentDiv.innerHTML = parseSimpleMarkdown(text);
+            } else {
+                contentDiv.textContent = text;
+            }
+
+            messageDiv.appendChild(headerDiv);
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function setChatLoading(isLoading) {
+            const loading = document.querySelector('.chat-loading');
+            const sendBtn = document.getElementById('chat-send');
+            const input = document.getElementById('chat-input');
+            if (isLoading) {
+                loading.classList.add('visible');
+                sendBtn.disabled = true;
+                input.disabled = true;
+            } else {
+                loading.classList.remove('visible');
+                sendBtn.disabled = false;
+                input.disabled = false;
+            }
+        }
+
+        function showChatError(message) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'chat-error';
+            errorDiv.textContent = 'Error: ' + message;
+            messagesDiv.appendChild(errorDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function sendChatMessage(event) {
+            if (event && event.preventDefault) event.preventDefault();
+
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addChatMessage('user', text);
+            chatHistory.push({ role: 'user', text: text });
+            input.value = '';
+            input.style.height = 'auto';
+
+            if (!CHAT_ENDPOINT) {
+                addChatMessage('assistant', CHAT_OFFLINE_REPLY);
+                return;
+            }
+
+            setChatLoading(true);
+            try {
+                const response = await fetch(CHAT_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        messages: chatHistory.slice(-CHAT_HISTORY_LIMIT),
+                        focus: currentNodeId
+                    })
+                });
+
+                const data = await response.json().catch(function () { return null; });
+                const reply = data && (typeof data.reply === 'string' ? data.reply
+                    : (typeof data.response === 'string' ? data.response : null));
+
+                if (!reply) {
+                    addChatMessage('assistant', CHAT_OFFLINE_REPLY);
+                    return;
+                }
+
+                addChatMessage('assistant', reply);
+                chatHistory.push({ role: 'assistant', text: reply });
+            } catch (error) {
+                console.error('Chat request failed:', error);
+                addChatMessage('assistant', CHAT_OFFLINE_REPLY);
+            } finally {
+                setChatLoading(false);
+                input.focus();
+            }
+        }
+
+        function startNewThread() {
+            chatHistory = [];
+            document.getElementById('chat-messages').innerHTML = CHAT_WELCOME_HTML;
+        }
+
+        document.getElementById('chat-input').addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        document.getElementById('chat-input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -6,6 +6,8 @@ I do a lot of systems and ecosystem mapping in my design practice — stakeholde
 
 **[Explore the live demo →](https://earlyprototype.github.io/knowledge-graph-kit/)** — an ecosystem map of my own public projects, built with this kit. It's also what the map on my GitHub profile links to.
 
+**[See it deployed in the wild →](https://earlyprototype.github.io/fxc-service-map/)** — the FactoryXChange 2.0 Service Map, an interactive service finder built with this kit for the FactoryXChange programme with Irish Manufacturing Research.
+
 <div align="center">
 
 ![Knowledge Graph Kit](img/top.png)
